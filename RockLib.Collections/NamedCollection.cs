@@ -17,7 +17,8 @@ namespace RockLib.Collections
         private readonly IReadOnlyDictionary<string, T> _valuesByName;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NamedCollection{T}"/> class.
+        /// Initializes a new instance of the <see cref="NamedCollection{T}"/> class
+        /// according to the specified <paramref name="getName"/> function.
         /// </summary>
         /// <param name="values">The values that make up the collection.</param>
         /// <param name="getName">A function that gets the name of a value.</param>
@@ -26,8 +27,8 @@ namespace RockLib.Collections
         /// <see cref="OrdinalIgnoreCase"/>.
         /// </param>
         /// <param name="defaultName">
-        /// The name of a value that indicates it should be used as the default value for the
-        /// <see cref="NamedCollection{T}"/>.
+        /// The name that indicates an item should be used as the <see cref="DefaultValue"/>
+        /// for the <see cref="NamedCollection{T}"/>.
         /// </param>
         public NamedCollection(IEnumerable<T> values, Func<T, string> getName, IEqualityComparer<string> stringComparer = null, string defaultName = "default")
         {
@@ -59,7 +60,7 @@ namespace RockLib.Collections
             _valuesByName = valuesByName;
 
 #if NET451
-        NamedValues = valuesByName.Values.ToList();
+            NamedValues = valuesByName.Values.ToList();
 #else
             NamedValues = valuesByName.Values;
 #endif
@@ -76,13 +77,13 @@ namespace RockLib.Collections
         public IReadOnlyCollection<T> NamedValues { get; }
 
         /// <summary>
-        /// The equality comparer used to determine if names are equal.
+        /// Gets the equality comparer used to determine if names are equal.
         /// </summary>
         public IEqualityComparer<string> StringComparer { get; }
 
         /// <summary>
-        /// The name of a value that indicates it should be used as the default value for a
-        /// <see cref="NamedCollection{T}"/>.
+        /// Gets the default name. A value with this (or <see langword="null" /> or
+        /// <see cref="string.Empty"/>) as its name is considered a default value.
         /// </summary>
         public string DefaultName { get; }
 
