@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-
+#if NET451
+using System.Linq;
+#endif
 using static System.StringComparer;
 
 namespace RockLib.Collections
