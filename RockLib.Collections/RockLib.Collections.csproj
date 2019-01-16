@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <PackageId>RockLib.Collections</PackageId>
-    <PackageVersion>1.0.0-alpha00</PackageVersion>
+    <PackageVersion>1.0.0-alpha01</PackageVersion>
     <Authors>Quicken Loans</Authors>
     <Description>Various classes related to collections.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
