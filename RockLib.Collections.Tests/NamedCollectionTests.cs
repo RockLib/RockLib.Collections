@@ -33,7 +33,8 @@ namespace RockLib.Collections.Tests
 
             Action action = () => new NamedCollection<Foo>(values, f => f.Name);
 
-            action.Should().ThrowExactly<ArgumentException>();
+            action.Should().ThrowExactly<ArgumentException>()
+                .WithMessage("Cannot have more than one default value.*Parameter name: values");
         }
 
         [Fact]
@@ -41,7 +42,8 @@ namespace RockLib.Collections.Tests
         {
             var values = new[] { new Foo("bar"), new Foo("bar") };
             Action action = () => new NamedCollection<Foo>(values, f => f.Name);
-            action.Should().ThrowExactly<ArgumentException>();
+            action.Should().ThrowExactly<ArgumentException>()
+                .WithMessage("Cannot have more than one value with the same name: bar.*Parameter name: values");
         }
 
         [Fact]
@@ -237,7 +239,8 @@ namespace RockLib.Collections.Tests
             foreach (var defaultName in new[] { "default", null, "" })
             {
                 Action action = () => { var dummy = collection[defaultName]; };
-                action.Should().ThrowExactly<KeyNotFoundException>();
+                action.Should().ThrowExactly<KeyNotFoundException>()
+                    .WithMessage("The named collection does not have a default value.");
             }
         }
 
@@ -252,7 +255,8 @@ namespace RockLib.Collections.Tests
             var collection = new NamedCollection<Foo>(values, f => f.Name);
 
             Action action = () => { var dummy = collection["qux"]; };
-            action.Should().ThrowExactly<KeyNotFoundException>();
+            action.Should().ThrowExactly<KeyNotFoundException>()
+                .WithMessage("The given name was not present in the named collection: qux.");
         }
 
         [Theory]

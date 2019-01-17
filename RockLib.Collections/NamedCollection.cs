@@ -54,7 +54,11 @@ namespace RockLib.Collections
                     DefaultValue = value;
                 }
                 else
+                {
+                    if (valuesByName.ContainsKey(name))
+                        throw new ArgumentException($"Cannot have more than one value with the same name: {name}.", nameof(values));
                     valuesByName.Add(name, value);
+                }
             }
 
             _valuesByName = valuesByName;
@@ -97,7 +101,7 @@ namespace RockLib.Collections
         /// The value with the specified name. If a value with the specified name is not found, an exception
         /// is thrown.
         /// </returns>
-        public T this[string name] => TryGetValue(name, out var value) ? value : throw new KeyNotFoundException();
+        public T this[string name] => TryGetValue(name, out var value) ? value : throw NameNotFound(name);
 
         /// <summary>
         /// Determines whether the collection contains an value with the specified name.
@@ -149,6 +153,11 @@ namespace RockLib.Collections
         /// </returns>
         public bool IsDefaultName(string name) =>
             string.IsNullOrEmpty(name) || StringComparer.Equals(name, DefaultName);
+
+        private KeyNotFoundException NameNotFound(string name) =>
+            new KeyNotFoundException(IsDefaultName(name)
+                ? "The named collection does not have a default value."
+                : $"The given name was not present in the named collection: {name}.");
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
