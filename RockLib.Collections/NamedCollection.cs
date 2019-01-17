@@ -30,7 +30,13 @@ namespace RockLib.Collections
         /// The name that indicates an item should be used as the <see cref="DefaultValue"/>
         /// for the <see cref="NamedCollection{T}"/>.
         /// </param>
-        public NamedCollection(IEnumerable<T> values, Func<T, string> getName, IEqualityComparer<string> stringComparer = null, string defaultName = "default")
+        /// <param name="strict">
+        /// Whether to throw an exception if <paramref name="values"/> contains more than one
+        /// default value or more than one value with the same name. If <see langword="false"/>,
+        /// when there are duplicates, then the last value in the collection wins.
+        /// </param>
+        public NamedCollection(IEnumerable<T> values, Func<T, string> getName,
+            IEqualityComparer<string> stringComparer = null, string defaultName = "default", bool strict = true)
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
@@ -48,16 +54,16 @@ namespace RockLib.Collections
                 var name = getName(value);
                 if (IsDefaultName(name))
                 {
-                    if (alreadyHasDefaultValue)
+                    if (strict && alreadyHasDefaultValue)
                         throw new ArgumentException("Cannot have more than one default value.", nameof(values));
                     alreadyHasDefaultValue = true;
                     DefaultValue = value;
                 }
                 else
                 {
-                    if (valuesByName.ContainsKey(name))
+                    if (strict && valuesByName.ContainsKey(name))
                         throw new ArgumentException($"Cannot have more than one value with the same name: {name}.", nameof(values));
-                    valuesByName.Add(name, value);
+                    valuesByName[name] = value;
                 }
             }
 

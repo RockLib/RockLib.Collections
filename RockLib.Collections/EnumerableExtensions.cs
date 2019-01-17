@@ -23,9 +23,17 @@ namespace RockLib.Collections
         /// The name that indicates an item should be used as the <see cref="NamedCollection{T}.DefaultValue"/>
         /// for the <see cref="NamedCollection{T}"/>.
         /// </param>
-        /// <returns></returns>
+        /// <param name="strict">
+        /// Whether to throw an exception if <paramref name="values"/> contains more than one
+        /// default value or more than one value with the same name. If <see langword="false"/>,
+        /// when there are duplicates, then the last value in the collection wins.
+        /// </param>
+        /// <returns>
+        /// A <see cref="NamedCollection{T}"/> that contains values of type <typeparamref name="T"/>
+        /// selected from the input sequence.
+        /// </returns>
         public static NamedCollection<T> ToNamedCollection<T>(this IEnumerable<T> values, Func<T, string> getName,
-            IEqualityComparer<string> stringComparer = null, string defaultName = "default") =>
-            new NamedCollection<T>(values, getName, stringComparer, defaultName);
+            IEqualityComparer<string> stringComparer = null, string defaultName = "default", bool strict = true) =>
+            new NamedCollection<T>(values, getName, stringComparer, defaultName, strict);
     }
 }

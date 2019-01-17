@@ -41,9 +41,31 @@ namespace RockLib.Collections.Tests
         public void ConstructorThrowsWhenThereIsMoreThanOneValueWithTheSameName()
         {
             var values = new[] { new Foo("bar"), new Foo("bar") };
+
             Action action = () => new NamedCollection<Foo>(values, f => f.Name);
+
             action.Should().ThrowExactly<ArgumentException>()
                 .WithMessage("Cannot have more than one value with the same name: bar.*Parameter name: values");
+        }
+
+        [Fact]
+        public void ConstructorDoesNotThrowWhenThereIsMoreThanOneDefaultValueAndStrictIsFalse()
+        {
+            var values = new[] { new Foo("default"), new Foo("default") };
+
+            Action action = () => new NamedCollection<Foo>(values, f => f.Name, strict: false);
+
+            action.Should().NotThrow();
+        }
+
+        [Fact]
+        public void ConstructorDoesNotThrowWhenThereIsMoreThanOneValueWithTheSameNameAndStrictIsFalse()
+        {
+            var values = new[] { new Foo("bar"), new Foo("bar") };
+
+            Action action = () => new NamedCollection<Foo>(values, f => f.Name, strict: false);
+
+            action.Should().NotThrow();
         }
 
         [Fact]
