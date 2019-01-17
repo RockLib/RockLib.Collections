@@ -17,7 +17,7 @@ public class Worker
 
     public Worker(IEnumerable<Detail> details)
     {
-      _details = details.ToNamedCollection(d => d.Name);
+        _details = details.ToNamedCollection(d => d.Name);
     }
 
     public void DoWork(string detailName = null)

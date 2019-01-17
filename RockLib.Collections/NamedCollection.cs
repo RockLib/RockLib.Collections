@@ -140,7 +140,14 @@ namespace RockLib.Collections
             return false;
         }
 
-        private bool IsDefaultName(string name) =>
+        /// <summary>
+        /// Returns whether the specified name is a default name.
+        /// </summary>
+        /// <param name="name">The name to check.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified name is a default name; otherwise <see langword="false"/>.
+        /// </returns>
+        public bool IsDefaultName(string name) =>
             string.IsNullOrEmpty(name) || StringComparer.Equals(name, DefaultName);
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();

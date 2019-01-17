@@ -1,6 +1,7 @@
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
 namespace RockLib.Collections.Tests
@@ -311,6 +312,38 @@ namespace RockLib.Collections.Tests
             var collection = new NamedCollection<Foo>(values, f => f.Name);
 
             collection.Contains("qux").Should().Be(false);
+        }
+
+        [Fact]
+        public void IsDefaultNameMethodReturnsTrueGivenNull()
+        {
+            var collection = new NamedCollection<Foo>(Enumerable.Empty<Foo>(), f => f.Name);
+
+            collection.IsDefaultName(null).Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsDefaultNameMethodReturnsTrueGivenEmptyString()
+        {
+            var collection = new NamedCollection<Foo>(Enumerable.Empty<Foo>(), f => f.Name);
+
+            collection.IsDefaultName("").Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsDefaultNameMethodReturnsTrueGivenDefaultName()
+        {
+            var collection = new NamedCollection<Foo>(Enumerable.Empty<Foo>(), f => f.Name);
+
+            collection.IsDefaultName("default").Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsDefaultNamMethodeReturnsFalseGivenAnyOtherString()
+        {
+            var collection = new NamedCollection<Foo>(Enumerable.Empty<Foo>(), f => f.Name);
+
+            collection.IsDefaultName("literally anything else").Should().BeFalse();
         }
 
         public class Foo
