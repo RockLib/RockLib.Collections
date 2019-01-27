@@ -173,6 +173,26 @@ namespace RockLib.Collections.Tests
             collection.NamedValues.Should().BeEquivalentTo(new[] { barFoo, bazFoo });
         }
 
+        [Fact]
+        public void CountPropertyReturnsTheNumberOfNamedValuesWhenDefaultValueIsNull()
+        {
+            var values = new[] { new Foo("bar"), new Foo("baz") };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            collection.Count.Should().Be(2);
+        }
+
+        [Fact]
+        public void CountPropertyReturnsTheNumberOfNamedValuesPlusOneWhenDefaultValueIsNotNull()
+        {
+            var values = new[] { new Foo("bar"), new Foo("baz"), new Foo("default") };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            collection.Count.Should().Be(3);
+        }
+
         [Theory]
         [InlineData("default")]
         [InlineData(null)]
@@ -385,7 +405,7 @@ namespace RockLib.Collections.Tests
         }
 
         [Fact]
-        public void IsDefaultNamMethodeReturnsFalseGivenAnyOtherString()
+        public void IsDefaultNameMethodeReturnsFalseGivenAnyOtherString()
         {
             var collection = new NamedCollection<Foo>(Enumerable.Empty<Foo>(), f => f.Name);
 

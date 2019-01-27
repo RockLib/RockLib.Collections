@@ -12,7 +12,7 @@ namespace RockLib.Collections
     /// Represents a collection that can be retrieved by name.
     /// </summary>
     /// <typeparam name="T">The type of items in the collection.</typeparam>
-    public class NamedCollection<T> : IEnumerable<T>
+    public class NamedCollection<T> : IReadOnlyCollection<T>
     {
         private const string _defaultDefaultName = "default";
 
@@ -49,16 +49,16 @@ namespace RockLib.Collections
             DefaultName = !string.IsNullOrEmpty(defaultName) ? defaultName : _defaultDefaultName;
 
             var valuesByName = new Dictionary<string, T>(StringComparer);
-            var alreadyHasDefaultValue = false;
+            var hasDefaultValue = false;
 
             foreach (var value in values)
             {
                 var name = getName(value);
                 if (IsDefaultName(name))
                 {
-                    if (strict && alreadyHasDefaultValue)
+                    if (strict && hasDefaultValue)
                         throw new ArgumentException("Cannot have more than one default value.", nameof(values));
-                    alreadyHasDefaultValue = true;
+                    hasDefaultValue = true;
                     DefaultValue = value;
                 }
                 else
@@ -68,6 +68,8 @@ namespace RockLib.Collections
                     valuesByName[name] = value;
                 }
             }
+
+            Count = valuesByName.Count + (hasDefaultValue ? 1 : 0);
 
             _valuesByName = valuesByName;
 
@@ -98,6 +100,11 @@ namespace RockLib.Collections
         /// <see cref="string.Empty"/>) as its name is considered a default value.
         /// </summary>
         public string DefaultName { get; }
+
+        /// <summary>
+        /// Gets the number of elements in the collection.
+        /// </summary>
+        public int Count { get; }
 
         /// <summary>
         /// Gets the value with the specified name.
