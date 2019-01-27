@@ -14,6 +14,8 @@ namespace RockLib.Collections
     /// <typeparam name="T">The type of items in the collection.</typeparam>
     public class NamedCollection<T> : IEnumerable<T>
     {
+        private const string _defaultDefaultName = "default";
+
         private readonly IReadOnlyDictionary<string, T> _valuesByName;
 
         /// <summary>
@@ -36,7 +38,7 @@ namespace RockLib.Collections
         /// when there are duplicates, then the last value in the collection wins.
         /// </param>
         public NamedCollection(IEnumerable<T> values, Func<T, string> getName,
-            IEqualityComparer<string> stringComparer = null, string defaultName = "default", bool strict = true)
+            IEqualityComparer<string> stringComparer = null, string defaultName = _defaultDefaultName, bool strict = true)
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
@@ -44,7 +46,7 @@ namespace RockLib.Collections
                 throw new ArgumentNullException(nameof(getName));
 
             StringComparer = stringComparer ?? OrdinalIgnoreCase;
-            DefaultName = defaultName;
+            DefaultName = !string.IsNullOrEmpty(defaultName) ? defaultName : _defaultDefaultName;
 
             var valuesByName = new Dictionary<string, T>(StringComparer);
             var alreadyHasDefaultValue = false;

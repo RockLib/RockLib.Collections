@@ -99,6 +99,26 @@ namespace RockLib.Collections.Tests
         }
 
         [Fact]
+        public void ConstructorSetsDefaultNameToDefaultWhenNull()
+        {
+            var values = new[] { new Foo("bar") };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name, defaultName: null);
+
+            collection.DefaultName.Should().Be("default");
+        }
+
+        [Fact]
+        public void ConstructorSetsDefaultNameToDefaultWhenEmptyString()
+        {
+            var values = new[] { new Foo("bar") };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name, defaultName: "");
+
+            collection.DefaultName.Should().Be("default");
+        }
+
+        [Fact]
         public void DefaultValuePropertyIsNullWhenNoValueHasADefaultName()
         {
             var values = new[] { new Foo("bar") };
