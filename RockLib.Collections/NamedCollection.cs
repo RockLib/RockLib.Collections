@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-#if NET451
 using System.Linq;
-#endif
 using static System.StringComparer;
 
 namespace RockLib.Collections
@@ -12,11 +10,12 @@ namespace RockLib.Collections
     /// Represents a collection that can be retrieved by name.
     /// </summary>
     /// <typeparam name="T">The type of items in the collection.</typeparam>
-    public class NamedCollection<T> : IReadOnlyCollection<T>
+    public class NamedCollection<T> : IReadOnlyCollection<T>, IReadOnlyDictionary<string, T>
     {
         private const string _defaultDefaultName = "default";
 
         private readonly IReadOnlyDictionary<string, T> _valuesByName;
+        private readonly Func<T, string> _dictionaryKeySelector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NamedCollection{T}"/> class
@@ -68,6 +67,12 @@ namespace RockLib.Collections
                     valuesByName[name] = value;
                 }
             }
+
+            _dictionaryKeySelector = value =>
+            {
+                var name = getName(value);
+                return IsDefaultName(name) ? DefaultName : name;
+            };
 
             Count = valuesByName.Count + (hasDefaultValue ? 1 : 0);
 
@@ -169,21 +174,35 @@ namespace RockLib.Collections
         public bool IsDefaultName(string name) =>
             string.IsNullOrEmpty(name) || StringComparer.Equals(name, DefaultName);
 
-        private KeyNotFoundException NameNotFound(string name) =>
-            new KeyNotFoundException(IsDefaultName(name)
-                ? "The named collection does not have a default value."
-                : $"The given name was not present in the named collection: {name}.");
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        private IEnumerator<T> GetEnumerator()
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator that can be used to iterate through the collection.</returns>
+        public IEnumerator<T> GetEnumerator()
         {
             if (DefaultValue != null)
                 yield return DefaultValue;
             foreach (var namedValue in NamedValues)
                 yield return namedValue;
         }
+
+        IEnumerable<string> IReadOnlyDictionary<string, T>.Keys => this.Select(_dictionaryKeySelector);
+
+        IEnumerable<T> IReadOnlyDictionary<string, T>.Values => this;
+
+        bool IReadOnlyDictionary<string, T>.ContainsKey(string key) => Contains(key);
+
+        IEnumerator<KeyValuePair<string, T>> IEnumerable<KeyValuePair<string, T>>.GetEnumerator()
+        {
+            foreach (var value in this)
+                yield return new KeyValuePair<string, T>(_dictionaryKeySelector(value), value);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        private KeyNotFoundException NameNotFound(string name) =>
+            new KeyNotFoundException(IsDefaultName(name)
+                ? "The named collection does not have a default value."
+                : $"The given name was not present in the named collection: {name}.");
     }
 }

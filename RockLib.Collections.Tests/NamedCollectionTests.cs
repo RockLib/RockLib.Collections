@@ -1,5 +1,6 @@
 using FluentAssertions;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -191,6 +192,132 @@ namespace RockLib.Collections.Tests
             var collection = new NamedCollection<Foo>(values, f => f.Name);
 
             collection.Count.Should().Be(3);
+        }
+
+        [Fact]
+        public void IEnumerableGetEnumeratorMethodReturnsTheDefaultValueThenTheNamedValues()
+        {
+            Foo barFoo = new Foo("bar");
+            Foo defaultFoo = new Foo("default");
+
+            var values = new[] { barFoo, defaultFoo };
+
+            IEnumerable collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            var enumerator = collection.GetEnumerator();
+
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(defaultFoo);
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(barFoo);
+            enumerator.MoveNext().Should().BeFalse();
+        }
+
+        [Fact]
+        public void IEnumerableGetEnumeratorMethodReturnsJustTheNamedValuesIfDefaultValueIsNull()
+        {
+            Foo barFoo = new Foo("bar");
+
+            var values = new[] { barFoo };
+
+            IEnumerable collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            var enumerator = collection.GetEnumerator();
+
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(barFoo);
+            enumerator.MoveNext().Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetEnumeratorMethodReturnsTheDefaultValueThenTheNamedValues()
+        {
+            Foo barFoo = new Foo("bar");
+            Foo defaultFoo = new Foo("default");
+
+            var values = new[] { barFoo, defaultFoo };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            var enumerator = collection.GetEnumerator();
+
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(defaultFoo);
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(barFoo);
+            enumerator.MoveNext().Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetEnumeratorMethodReturnsJustTheNamedValuesIfDefaultValueIsNull()
+        {
+            Foo barFoo = new Foo("bar");
+
+            var values = new[] { barFoo };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+
+            var enumerator = collection.GetEnumerator();
+
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeSameAs(barFoo);
+            enumerator.MoveNext().Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData("default")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void IReadOnlyDictionaryKeysPropertyReturnsTheNamesOfTheValuesOfTheCollection(string defaultValueName)
+        {
+            Foo barFoo = new Foo("bar");
+            Foo defaultFoo = new Foo(defaultValueName);
+
+            var values = new[] { barFoo, defaultFoo };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+            IReadOnlyDictionary<string, Foo> dictionary = collection;
+
+            dictionary.Keys.Should().Equal(new[] { "default", "bar" });
+        }
+
+        [Fact]
+        public void IReadOnlyDictionaryValuesPropertyReturnsTheNamedCollection()
+        {
+            Foo barFoo = new Foo("bar");
+            Foo defaultFoo = new Foo("default");
+
+            var values = new[] { barFoo, defaultFoo };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+            IReadOnlyDictionary<string, Foo> dictionary = collection;
+
+            dictionary.Values.Should().BeSameAs(collection);
+        }
+
+        [Theory]
+        [InlineData("default")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void IReadOnlyDictionaryGetEnumeratorReturnsTheExpectedKeyValuePairs(string defaultValueName)
+        {
+            Foo barFoo = new Foo("bar");
+            Foo defaultFoo = new Foo(defaultValueName);
+
+            var values = new[] { barFoo, defaultFoo };
+
+            var collection = new NamedCollection<Foo>(values, f => f.Name);
+            IReadOnlyDictionary<string, Foo> dictionary = collection;
+
+            var enumerator = dictionary.GetEnumerator();
+
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Key.Should().Be("default");
+            enumerator.Current.Value.Should().BeSameAs(defaultFoo);
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Key.Should().Be("bar");
+            enumerator.Current.Value.Should().BeSameAs(barFoo);
+            enumerator.MoveNext().Should().BeFalse();
         }
 
         [Theory]
