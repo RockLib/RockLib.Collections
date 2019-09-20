@@ -7,7 +7,7 @@
   <PropertyGroup>
     <PackageId>RockLib.Collections</PackageId>
     <PackageVersion>1.0.1</PackageVersion>
-    <Authors>Quicken Loans</Authors>
+    <Authors>Brian Friesen</Authors>
     <Description>Various classes related to collections.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReleaseNotes></PackageReleaseNotes>
