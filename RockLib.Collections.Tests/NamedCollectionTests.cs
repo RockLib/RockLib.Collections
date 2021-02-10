@@ -35,7 +35,7 @@ namespace RockLib.Collections.Tests
             Action action = () => new NamedCollection<Foo>(values, f => f.Name);
 
             action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Cannot have more than one default value.*Parameter name: values");
+                .WithMessage("Cannot have more than one default value.*Parameter* *values*");
         }
 
         [Fact]
@@ -46,7 +46,7 @@ namespace RockLib.Collections.Tests
             Action action = () => new NamedCollection<Foo>(values, f => f.Name);
 
             action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Cannot have more than one value with the same name: bar.*Parameter name: values");
+                .WithMessage("Cannot have more than one value with the same name: bar.*Parameter* *values*");
         }
 
         [Fact]
