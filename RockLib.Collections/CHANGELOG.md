@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ----
 
 **Note:** Release notes in the above format are not available for earlier versions of
-RockLib.Secrets. What follows below are the original release notes.
+RockLib.Collections. What follows below are the original release notes.
 
 ----
 
