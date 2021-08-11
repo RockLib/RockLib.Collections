@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <PackageId>RockLib.Collections</PackageId>
-    <PackageVersion>1.0.5</PackageVersion>
+    <PackageVersion>1.0.6</PackageVersion>
     <Authors>RockLib</Authors>
     <Description>Various classes related to collections.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
