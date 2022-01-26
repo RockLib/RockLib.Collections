@@ -1,14 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup Condition=" '$(TargetFramework)' == 'net48'">
-		<EnableNETAnalyzers>true</EnableNETAnalyzers>
-	</PropertyGroup>
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
 		<IsPackable>false</IsPackable>
-		<LangVersion>latest</LangVersion>
-		<Nullable>enable</Nullable>
-		<TargetFrameworks>net6.0;net48</TargetFrameworks>
-		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="FluentAssertions" Version="5.10.3" />
@@ -21,11 +13,5 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\RockLib.Collections\RockLib.Collections.csproj" />
-	</ItemGroup>
-	<ItemGroup Condition=" '$(TargetFramework)' == 'net48'">
-		<PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="6.0.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 	</ItemGroup>
 </Project>
