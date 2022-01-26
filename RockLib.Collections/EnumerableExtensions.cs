@@ -33,7 +33,7 @@ namespace RockLib.Collections
         /// selected from the input sequence.
         /// </returns>
         public static NamedCollection<T> ToNamedCollection<T>(this IEnumerable<T> values, Func<T, string> getName,
-            IEqualityComparer<string> stringComparer = null, string defaultName = "default", bool strict = true) =>
+            IEqualityComparer<string>? stringComparer = null, string defaultName = "default", bool strict = true) =>
             new NamedCollection<T>(values, getName, stringComparer, defaultName, strict);
     }
 }
