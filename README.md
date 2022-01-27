@@ -35,3 +35,10 @@ public class Detail
     public string Name { get; }
 }
 ```
+
+ ### Supported Targets 
+
+ This library supports the following targets:
+   - .NET 6
+   - .NET Core 3.1
+   - .NET Framework 4.8
