@@ -82,11 +82,7 @@ namespace RockLib.Collections
 
          _valuesByName = valuesByName;
 
-#if NET451
-            NamedValues = valuesByName.Values.ToList();
-#else
          NamedValues = valuesByName.Values;
-#endif
       }
 
       /// <summary>
