@@ -3,12 +3,11 @@ name: Build and Test
 on: [push] #Other interesting triggers: pull_request, release, workflow_call, fork
 
 jobs:
-  build_and_test:
-
+  initialize:
     runs-on: windows-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1.x', '4.8.x', '6.0.x' ]
+        dotnet-version: ['3.1.x', '6.0.x']
 
     steps:
       - uses: actions/checkout@v3
@@ -16,7 +15,13 @@ jobs:
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
-
+  
+  build_and_test:
+    needs: initialize
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v3
       - name: Install dependencies
         run: dotnet restore
 
