@@ -1,0 +1,46 @@
+name: Workflow
+
+on: [push]
+  #push:
+    #branches: [main]
+  #pull_request:
+    #branches: [main]
+
+jobs:
+  initialize:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        dotnet-version: ['3.1.x', '6.0.x']
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+  
+  build_and_test:
+    needs: initialize
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build "./RockLib.Collections/RockLib.Collections.csproj" --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test "./RockLib.Collections.Tests/RockLib.Collections.Tests.csproj" --no-restore --verbosity normal
+
+  #publish:
+  #  needs: build_and_test
+  #  runs-on: windows-latest
+  
+  #  steps:
+  #    - name: Publish
+  #      run: dotnet nuget push "[package_location]" -s "[package_destination]" -k "[key]"
+  #    - name: Publish
+  #      run: dotnet publish [sln] --configuration Release --output [output_destination]
