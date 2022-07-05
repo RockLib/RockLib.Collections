@@ -1,6 +1,6 @@
-name: Workflow
+name: Build and Test
 
-on: [push]
+on: [workflow_call] #[push] #temp disable
   #push:
     #branches: [main]
   #pull_request:
@@ -35,12 +35,8 @@ jobs:
       - name: Test
         run: dotnet test "./RockLib.Collections.Tests/RockLib.Collections.Tests.csproj" --no-restore --verbosity normal
 
-  #publish:
+  #ok_to_publish:
   #  needs: build_and_test
   #  runs-on: windows-latest
-  
-  #  steps:
-  #    - name: Publish
-  #      run: dotnet nuget push "[package_location]" -s "[package_destination]" -k "[key]"
-  #    - name: Publish
-  #      run: dotnet publish [sln] --configuration Release --output [output_destination]
+  #  environment: [EnviromentName]
+  #  uses: ./.github/workflows/publish.yml
