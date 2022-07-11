@@ -20,5 +20,5 @@ jobs:
  #         #DONE Replace SecretName with the name of a secret from GitHub https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-an-organization for more info
  #         API_KEY: ${{ secrets.[NUGET_API_KEY] }}
  #
- #       #TODO Replace package_version with an env that grabs the correct package version. May also want to replace RockLib.Collections with an env.
+ #       #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
  #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.[package_version].nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 

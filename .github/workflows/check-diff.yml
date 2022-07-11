@@ -4,12 +4,18 @@ on:
   [push, pull_request]
 
 jobs:
-  check-diff:
+  check_diff:
     
     runs-on: windows-latest
+
+    outputs: 
+      diff: ${{ steps.check-diff.outputs.diff }}
+      hasChanges: ${{ steps.check-diff.outputs.hasChanges }}
   
     steps:
       - uses: actions/checkout@v3
+        with: 
+          fetch-depth: 0
 
       - name: Get branch name (not pull request)
         if: github.event_name != 'pull_request'
@@ -21,11 +27,42 @@ jobs:
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
 
-    #  - name: Debug
-    #    run: echo ${{ env.BRANCH_NAME }}
-
       - name: Check Diff
-        run: gh api -H "Accept:application/vnd.github.diff" repos/RockLib/RockLib.Collections/compare/main...${{ env.BRANCH_NAME }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          #THIS_BRANCH: ${{ env.BRANCH_NAME }}
+        id: check-diff
+        #TODO Replace RockLib and RockLib.Collections with a variable OWNER and REPO like repos/${{ env.OWNER }}/${{ env.REPO }}/compare/main...${{ env.BRANCH_NAME }}
+        #Check if GitHub actions has a specified env similar to ${GITHUB_REF_NAME} for above.
+        #gh api -H "Accept:application/vnd.github.diff" repos/RockLib/RockLib.Collections/compare/main...${{ env.BRANCH_NAME }}
+        shell: pwsh
+        run: |
+          #Get the diff between this branch and main
+          $diff = git diff --name-only origin/main..${{ env.BRANCH_NAME }}
+
+          #Find any changed csproj files and if it has any set hasChanges to true
+          $projChanged = $diff | Where-Object { $_ -match '.csproj$' }
+          $hasChanges = $projChanged.Length -gt 0
+
+          #Output 
+          echo "::set-output name=diff::$projChanged"
+          echo "::set-output name=hasChanges::$hasChanges"
+
+     #   env:
+     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  #Use a job with a matrix strategy to define a job for each package.
+  #DONE keep the diff from above
+  #TODO search for specific package changes for each job.
+  #https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+  ok_to_publish:
+    needs: check_diff
+    if: needs.check_diff.outputs.hasChanges == 'True'
+    strategy:
+      matrix: 
+        package: ${{ needs.check_diff.outputs.diff }}
+        
+    runs-on: windows-latest
+
+    steps:
+      #- uses: actions/checkout@v3 #Might be able to comment out
+
+      - name: Has Diff
+        run: echo "${{ matrix.package }}"
