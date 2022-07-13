@@ -29,8 +29,6 @@ jobs:
 
       - name: Check Diff
         id: check-diff
-        #TODO Replace RockLib and RockLib.Collections with a variable OWNER and REPO like repos/${{ env.OWNER }}/${{ env.REPO }}/compare/main...${{ env.BRANCH_NAME }}
-        #Check if GitHub actions has a specified env similar to ${GITHUB_REF_NAME} for above.
         #gh api -H "Accept:application/vnd.github.diff" repos/RockLib/RockLib.Collections/compare/main...${{ env.BRANCH_NAME }}
         shell: pwsh
         run: |
@@ -38,11 +36,21 @@ jobs:
           $diff = git diff --name-only origin/main..${{ env.BRANCH_NAME }}
 
           #Find any changed csproj files and if it has any set hasChanges to true
-          $projChanged = $diff | Where-Object { $_ -match '.csproj$' }
+          $projChanged = $diff | Where-Object { $_ -match '.csproj$' } #(DiffHere).Remove(0, $diff.IndexOf('/') + 1)
           $hasChanges = $projChanged.Length -gt 0
 
+          #Debugging
+          echo "$diff"
+          echo "$projChanged"
+          echo "$hasChanges"
+
+          #If 1+ projects changed: split the diff on spaces into an array and run toJson() on the array
+          if ($hasChanges) {
+            $projChanged = $projChanged.split(" ")
+          }
+
           #Output 
-          echo "::set-output name=diff::$projChanged"
+          echo "::set-output name=diff::toJson($projChanged)"
           echo "::set-output name=hasChanges::$hasChanges"
 
      #   env:
@@ -57,12 +65,11 @@ jobs:
     if: needs.check_diff.outputs.hasChanges == 'True'
     strategy:
       matrix: 
-        package: ${{ needs.check_diff.outputs.diff }}
+        package: ${{ fromJson(needs.check_diff.outputs.diff) }}
+    name: Ok to Publish ${{ matrix.package }}
         
     runs-on: windows-latest
 
     steps:
-      #- uses: actions/checkout@v3 #Might be able to comment out
-
       - name: Has Diff
         run: echo "${{ matrix.package }}"

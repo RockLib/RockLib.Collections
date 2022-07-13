@@ -29,14 +29,20 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
 
+        #${{ github.repository }} - owner/repo 
+        #${{ github.event.repository.name }} - repo name 
+        #${{ github.repository_owner }} - repo owner name 
+        #See check-diff.yml for a job to get this branch name
+
+        #"${{ csprojPath }}"
       - name: Build
         run: dotnet build "./RockLib.Collections/RockLib.Collections.csproj" --configuration Release --no-restore
-
+        #"${{ csprojTestsPath }}"
       - name: Test
-        run: dotnet test "./RockLib.Collections.Tests/RockLib.Collections.Tests.csproj" --no-restore --verbosity normal
+        run: dotnet test "./RockLib.Collections.Tests/RockLib.Collections.Tests.csproj" --no-restore --verbosity normal #**Tests.csproj
 
   #ok_to_publish:
   #  needs: build_and_test
   #  runs-on: windows-latest
-  #  environment: [EnviromentName]
+  #  environment: [Release]
   #  uses: ./.github/workflows/publish.yml
