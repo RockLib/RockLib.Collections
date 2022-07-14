@@ -49,8 +49,13 @@ jobs:
             $projChanged = $projChanged.split(" ")
           }
 
+          #Debugging
+          echo "$projChanged"
+          echo "$projChanged = toJSON($projChanged)"
+          echo "$projChanged"
+
           #Output 
-          echo "::set-output name=diff::toJson($projChanged)"
+          echo "::set-output name=diff::toJSON($projChanged)" #toJSON here errors out, maybe it will work in another step.
           echo "::set-output name=hasChanges::$hasChanges"
 
      #   env:
@@ -65,7 +70,7 @@ jobs:
     if: needs.check_diff.outputs.hasChanges == 'True'
     strategy:
       matrix: 
-        package: ${{ fromJson(needs.check_diff.outputs.diff) }}
+        package: ${{ fromJSON(needs.check_diff.outputs.diff) }} 
     name: Ok to Publish ${{ matrix.package }}
         
     runs-on: windows-latest
