@@ -36,19 +36,20 @@ jobs:
 
         #Can build and test off the top level sln
       - name: Get .sln
-        run: find ./ -printf "%f\n"
-       #   $sln = ($(ls *.sln))
-       #   echo $sln
-       #   echo "SLN_NAME = $sln" >> $GITHUB_ENV
+        shell: pwsh
+        run: |
+          $sln = Get-ChildItem "*.sln" -Name #| echo "SLN_NAME=$PSItem" >> $GITHUB_ENV
+          echo $sln
+          #echo "SLN_NAME=$sln" >> $GITHUB_ENV
 
       #- name: Print .sln
       #  run: echo ${{ env.SLN_NAME }}
 
       - name: Build
-        run: dotnet build "./RockLib.Collections/RockLib.Collections.csproj" --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore
         
       - name: Test
-        run: dotnet test "./RockLib.Collections.Tests/RockLib.Collections.Tests.csproj" --no-restore --verbosity normal #**Tests.csproj
+        run: dotnet test --no-restore --verbosity normal #**Tests.csproj
 
   #ok_to_publish:
   #  needs: build_and_test

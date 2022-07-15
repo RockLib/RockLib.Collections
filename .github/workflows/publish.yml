@@ -10,7 +10,7 @@ jobs:
   
     steps:
       - uses: actions/checkout@v3
-      - name: Package #Double back here.
+      - name: Package #Need a matrix publish that will package/publish each changed project.
         run: |
           echo "Successfully called workflow" #Test message
  #       run: dotnet pack RockLib.Collections/RockLib.Collections.csproj --configuration Release #--no-build -o "./"
