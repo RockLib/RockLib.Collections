@@ -4,8 +4,16 @@ on:
   workflow_call:
 
 jobs:
-  publish:
+  ok_to_publish:
+    environment: Release
+    runs-on: windows-latest
     
+    steps:
+      - name: Test
+        run: echo "This is a test."
+
+  publish:
+    needs: ok_to_publish
     runs-on: windows-latest
   
     steps:
@@ -13,6 +21,8 @@ jobs:
       - name: Package #Need a matrix publish that will package/publish each changed project.
         run: |
           echo "Successfully called workflow" #Test message
+          ls
+
  #       run: dotnet pack RockLib.Collections/RockLib.Collections.csproj --configuration Release #--no-build -o "./"
  # 
  #     - name: Publish

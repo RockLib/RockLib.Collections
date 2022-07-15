@@ -1,6 +1,6 @@
 name: Build and Test
 
-on: [push] #[workflow_call] #[push] #temp disable
+on: [workflow_call] #[push] #temp disable
   #push:
     #branches: [main]
   #pull_request:
@@ -36,23 +36,17 @@ jobs:
 
         #Can build and test off the top level sln
       - name: Get .sln
-        shell: pwsh
+        shell: pwsh #$sln = Get-ChildItem "*.sln" -Name | echo "SLN_NAME=$PSItem" >> $env:GITHUB_ENV
         run: |
-          $sln = Get-ChildItem "*.sln" -Name #| echo "SLN_NAME=$PSItem" >> $GITHUB_ENV
-          echo $sln
-          #echo "SLN_NAME=$sln" >> $GITHUB_ENV
-
-      #- name: Print .sln
-      #  run: echo ${{ env.SLN_NAME }}
+          $sln = Get-ChildItem "*.sln" -Name
+          echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
         
       - name: Test
-        run: dotnet test --no-restore --verbosity normal #**Tests.csproj
+        run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal #**Tests.csproj
 
-  #ok_to_publish:
-  #  needs: build_and_test
-  #  runs-on: windows-latest
-  #  environment: [Release]
-  #  uses: ./.github/workflows/publish.yml
+  call_publish:
+    needs: build_and_test
+    uses: ./.github/workflows/publish.yml

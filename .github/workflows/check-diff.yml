@@ -1,15 +1,29 @@
 name: Check Diff
 
 on:
-  workflow_call: #[push, pull_request]
+  [push, pull_request] #workflow_call:
 
 jobs:
+  print_package_version:
+    runs-on: windows-latest
+    steps:
+      - name: Print Version
+        run: |
+          $csproj_path = "./RockLib.Collections.csproj"
+          $csproj = [xml](Get-Content -Path $csproj_path)
+          $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+          $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+
+          echo "$csproj_path"
+          echo "$package_id"
+          echo "$package_version"
+
   check_diff:
     
     runs-on: windows-latest
 
     outputs: 
-      diff: ${{ steps.check-diff.outputs.diff }}
+      diff: ${{ steps.output-tojson.outputs.diff }}
       hasChanges: ${{ steps.check-diff.outputs.hasChanges }}
   
     steps:
@@ -44,20 +58,27 @@ jobs:
           echo "$projChanged"
           echo "$hasChanges"
 
-          #If 1+ projects changed: split the diff on spaces into an array and run toJson() on the array
+          #If 1+ projects changed: split the diff on spaces into an array
           if ($hasChanges) {
             $projChanged = $projChanged.split(" ")
+            $projChangedJSON = ConvertTo-Json -Compress $projChanged
+            $projChangedJSON = "{`"include`":$projChangedJSON}"
           }
-
-          #Debugging
-          echo "$projChanged"
-          echo "$projChanged = toJSON($projChanged)"
-          echo "$projChanged"
-
-          #Output 
-          echo "::set-output name=diff::toJSON($projChanged)" #toJSON here errors out, maybe it will work in another step.
+          echo "$projChangedJSON"
+          #echo "$fromJSON($projChanged)"
+          #echo "$toJSON($projChanged)"
+          
+          #Output
           echo "::set-output name=hasChanges::$hasChanges"
-
+          #echo "::set-output name=diff::$projChangedJSON"
+          echo "projChangedJSON=$projChangedJSON" >> $GITHUB_ENV #Try saving as an env to output in another step.
+          echo "::set-output name=diff::${{ env.projChangedJSON }}"
+          
+      - name: Test Step
+        run: |
+          echo "${{ env.projChangedJSON }}"
+          echo "$fromJSON(${{ env.projChangedJSON }})"
+          echo "$toJSON(${{ env.projChangedJSON }})"
      #   env:
      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -65,15 +86,29 @@ jobs:
   #DONE keep the diff from above
   #TODO search for specific package changes for each job.
   #https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+  test_job:
+    needs: check_diff
+    runs-on: windows-latest
+    if: needs.check_diff.outputs.hasChanges == 'True'
+    steps: 
+      - name: View output value
+        run: |
+          #echo "${{ fromJSON(needs.check_diff.outputs.diff) }}"
+
+          $arrayFromJson = ConvertFrom-Json ${{ needs.check_diff.outputs.diff }}
+          echo "$arrayFromJson"
+          
+    
+
   ok_to_publish:
     needs: check_diff
+    runs-on: windows-latest
     if: needs.check_diff.outputs.hasChanges == 'True'
     strategy:
       matrix: 
-        package: ${{ fromJSON(needs.check_diff.outputs.diff) }} 
-    name: Ok to Publish ${{ matrix.package }}
+        package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
+    name: ${{ matrix.include }} #Ok to Publish
         
-    runs-on: windows-latest
 
     steps:
       - name: Has Diff
