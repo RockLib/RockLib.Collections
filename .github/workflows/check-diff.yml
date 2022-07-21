@@ -7,6 +7,7 @@ jobs:
   print_package_version:
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Print Version
         run: |
           $csproj_path = "./RockLib.Collections.csproj"
