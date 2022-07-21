@@ -4,20 +4,20 @@ on:
   [push, pull_request] #workflow_call:
 
 jobs:
-  print_package_version:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Print Version
-        run: |
-          $csproj_path = "./RockLib.Collections/RockLib.Collections.csproj"
-          $csproj = [xml](Get-Content $csproj_path)
-          $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
-          $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+  #print_package_version: #We will want to use the diff to select the path to the csproj file
+  #  runs-on: windows-latest
+  #  steps:
+  #    - uses: actions/checkout@v3
+  #    - name: Print Version
+  #      run: |
+  #        $csproj_path = "./RockLib.Collections/RockLib.Collections.csproj"
+  #        $csproj = [xml](Get-Content $csproj_path)
+  #        $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
+  #        $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
 
-          echo "$csproj_path"
-          echo "$package_id"
-          echo "$package_version"
+  #        echo "$csproj_path"
+  #        echo "$package_id"
+  #        echo "$package_version"
 
   check_diff:
     
@@ -63,23 +63,26 @@ jobs:
           if ($hasChanges) {
             $projChanged = $projChanged.split(" ")
             $projChangedJSON = ConvertTo-Json -Compress $projChanged
-            $projChangedJSON = "{`"include`":$projChangedJSON}"
+            $projChangedJSON = '["one", "two", "three"]' #test with hardcoded values
+            #$projChangedJSON = "{`"include`":$projChangedJSON}"
           }
           echo "$projChangedJSON"
-          #echo "$fromJSON($projChanged)"
-          #echo "$toJSON($projChanged)"
           
           #Output
           echo "::set-output name=hasChanges::$hasChanges"
-          #echo "::set-output name=diff::$projChangedJSON"
-          echo "projChangedJSON=$projChangedJSON" >> $GITHUB_ENV #Try saving as an env to output in another step.
-          echo "::set-output name=diff::${{ env.projChangedJSON }}"
+          echo "::set-output name=diff::$projChangedJSON"
+          #Try saving as an env to output in another step.
+          echo "PROJ_CHANGED_JSON=$projChangedJSON" >> $env:GITHUB_ENV
+          echo "${{ env.PROJ_CHANGED_JSON }}"
           
       - name: Test Step
         run: |
-          echo "${{ env.projChangedJSON }}"
-          echo "$fromJSON(${{ env.projChangedJSON }})"
-          echo "$toJSON(${{ env.projChangedJSON }})"
+          echo "${{ env.PROJ_CHANGED_JSON }}"
+          #echo "${{ fromJSON(env.PROJ_CHANGED_JSON) }}"
+          #echo "${{ fromJSON(env.PROJ_CHANGED_JSON).include }}"
+          #echo "${{ toJSON(env.PROJ_CHANGED_JSON) }}"
+          #echo "${{ fromJson(steps.check_diff.outputs.diff) }}"
+
      #   env:
      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -108,7 +111,7 @@ jobs:
     strategy:
       matrix: 
         package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
-    name: ${{ matrix.include }} #Ok to Publish
+    name: ${{ matrix.package }} #Ok to Publish
         
 
     steps:
