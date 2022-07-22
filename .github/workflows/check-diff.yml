@@ -51,7 +51,8 @@ jobs:
           $diff = git diff --name-only origin/main..${{ env.BRANCH_NAME }}
 
           #Find any changed csproj files and if it has any set hasChanges to true
-          $projChanged = $diff | Where-Object { $_ -match '.csproj$' } #(DiffHere).Remove(0, $diff.IndexOf('/') + 1)
+          $projChanged = $diff | Where-Object { $_ -Match '.csproj$' } #(DiffHere).Remove(0, $diff.IndexOf('/') + 1)
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch '.Tests.csproj$' }
           $hasChanges = $projChanged.Length -gt 0
 
           #Debugging
@@ -61,7 +62,7 @@ jobs:
 
           #If 1+ projects changed: split the diff on spaces into an array
           if ($hasChanges) {
-            $projChanged = Out-String -InputObject $projChanged
+            $projChanged = Out-String -Stream -InputObject $projChanged
             echo $projChanged
             $projChanged = $projChanged.split(" ")
             $projChangedJSON = ConvertTo-Json -Compress $projChanged

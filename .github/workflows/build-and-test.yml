@@ -36,7 +36,7 @@ jobs:
 
         #Can build and test off the top level sln
       - name: Get .sln
-        shell: pwsh #$sln = Get-ChildItem "*.sln" -Name | echo "SLN_NAME=$PSItem" >> $env:GITHUB_ENV
+        shell: pwsh
         run: |
           $sln = Get-ChildItem "*.sln" -Name
           echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
