@@ -61,11 +61,10 @@ jobs:
 
           #If 1+ projects changed: split the diff on spaces into an array
           if ($hasChanges) {
-            $projChanged = $projChanged.ToString()
+            $projChanged = Out-String -InputObject $projChanged
             echo $projChanged
             $projChanged = $projChanged.split(" ")
             $projChangedJSON = ConvertTo-Json -Compress $projChanged
-            #$projChangedJSON = '["one", "two", "three"]'
           }
           echo "$projChangedJSON"
           
