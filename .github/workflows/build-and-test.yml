@@ -1,6 +1,6 @@
 name: Build and Test
 
-on: [workflow_call] #[push] #temp disable
+on: [push]
   #push:
     #branches: [main]
   #pull_request:
@@ -28,13 +28,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         run: dotnet restore
-
-        #${{ github.repository }} - owner/repo 
-        #${{ github.event.repository.name }} - repo name 
-        #${{ github.repository_owner }} - repo owner name 
-        #See check-diff.yml for a job to get this branch name
-
-        #Can build and test off the top level sln
+        
       - name: Get .sln
         shell: pwsh
         run: |
@@ -47,6 +41,27 @@ jobs:
       - name: Test
         run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal #**Tests.csproj
 
-  call_publish:
+  
+  ok_to_publish:
     needs: build_and_test
-    uses: ./.github/workflows/publish.yml
+    environment: Release
+    runs-on: windows-latest
+    steps:
+      - run: echo "Steps are required."
+    
+  publish:
+    needs: ok_to_publish
+    runs-on: windows-latest
+  
+    steps:
+      - uses: actions/checkout@v3
+      - name: Package 
+        run: dotnet pack RockLib.Collections/RockLib.Collections.csproj --configuration Release #--no-build -o "./"
+
+#     - name: Publish
+ #       env:
+
+ #         API_KEY: ${{ secrets.[NUGET_API_KEY] }}
+ #
+ #       #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
+ #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.[package_version].nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 

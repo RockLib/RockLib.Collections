@@ -1,7 +1,7 @@
 name: Check Diff
 
 on:
-  [push, pull_request] #workflow_call:
+  workflow_call: #[push, pull_request] #workflow_call:
 
 jobs:
   #print_package_version: #We will want to use the diff to select the path to the csproj file
