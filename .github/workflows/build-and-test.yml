@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         run: dotnet restore
-        
+
       - name: Get .sln
         shell: pwsh
         run: |
@@ -48,6 +48,21 @@ jobs:
     runs-on: windows-latest
     steps:
       - run: echo "Steps are required."
+
+  #print_package_version: #We will want to use the diff to select the path to the csproj file
+  #  runs-on: windows-latest
+  #  steps:
+  #    - uses: actions/checkout@v3
+  #    - name: Print Version
+  #      run: |
+  #        $csproj_path = "./RockLib.Collections/RockLib.Collections.csproj"
+  #        $csproj = [xml](Get-Content $csproj_path)
+  #        $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
+  #        $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+
+  #        echo "$csproj_path"
+  #        echo "$package_id"
+  #        echo "PACKAGE_VERSION=$package_version" >> $env:GITHUB_ENV
     
   publish:
     needs: ok_to_publish
@@ -64,4 +79,4 @@ jobs:
  #         API_KEY: ${{ secrets.[NUGET_API_KEY] }}
  #
  #       #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
- #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.[package_version].nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 
+ #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.${{ env.PACKAGE_VERSION }}.nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 
