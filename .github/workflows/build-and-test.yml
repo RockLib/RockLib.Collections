@@ -7,14 +7,36 @@ on: [push]
     #branches: [main]
 
 jobs:
+  #install:
+  #  runs-on: windows-2022
+  #  steps:
+  #    - shell: pwsh
+  #      run: |
+  #        $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
+  #        $dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
+  #        # Install dotnet 4.8 targeting pack
+  #        Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
+  #        Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
+  #        dotnet --list-sdks
+
   initialize:
-    runs-on: windows-latest
+    #needs: [install]
+    runs-on: windows-2022
     strategy:
       matrix:
-        dotnet-version: ['3.1.x', '6.0.x']
+        dotnet-version: ['3.1.x', '4.8', '6.0.x']
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install .NET 4.8
+        if: ${{ matrix.dotnet-version }} == '4.8'
+        run: |
+          $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
+          $dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
+          # Install dotnet 4.8 targeting pack
+          Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
+          Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
+          dotnet --list-sdks
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v2
         with:
@@ -22,7 +44,7 @@ jobs:
   
   build_and_test:
     needs: initialize
-    runs-on: windows-latest
+    runs-on: windows-2022
     
     steps:
       - uses: actions/checkout@v3
@@ -39,44 +61,45 @@ jobs:
         run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
         
       - name: Test
-        run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal #**Tests.csproj
+        run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal
 
   
   ok_to_publish:
     needs: build_and_test
     environment: Release
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - run: echo "Steps are required."
-
-  #print_package_version: #We will want to use the diff to select the path to the csproj file
-  #  runs-on: windows-latest
-  #  steps:
-  #    - uses: actions/checkout@v3
-  #    - name: Print Version
-  #      run: |
-  #        $csproj_path = "./RockLib.Collections/RockLib.Collections.csproj"
-  #        $csproj = [xml](Get-Content $csproj_path)
-  #        $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
-  #        $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
-
-  #        echo "$csproj_path"
-  #        echo "$package_id"
-  #        echo "PACKAGE_VERSION=$package_version" >> $env:GITHUB_ENV
+      - run: echo "Steps are required in jobs. An action is required in steps."
     
   publish:
     needs: ok_to_publish
-    runs-on: windows-latest
+    runs-on: windows-2022
   
     steps:
       - uses: actions/checkout@v3
+      - name: Set Env Variables
+        run: |
+          $repo_name = "${{ github.event.repository.name }}"
+          $csproj_path = "./$repo_name/RockLib.Collections.csproj"
+          $csproj = [xml](Get-Content $csproj_path)
+          $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
+          $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+
+          echo "$repo_name"
+          echo "$csproj_path"
+          echo "REPO_NAME=$repo_name" >> $env:GITHUB_ENV
+          echo "PACKAGE_ID=$package_id" >> $env:GITHUB_ENV
+          echo "PACKAGE_VERSION=$package_version" >> $env:GITHUB_ENV
+
       - name: Package 
-        run: dotnet pack RockLib.Collections/RockLib.Collections.csproj --configuration Release #--no-build -o "./"
+        run: | 
+          dotnet --list-sdks
+          dotnet pack ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj --configuration Release #--no-build -o "./"
+      
+      - name: Publish
+        run: echo "${{ env.REPO_NAME }}/bin/Release/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg"
+        #env:
+        #  API_KEY: ${{ secrets.[NUGET_API_KEY] }}
 
-#     - name: Publish
- #       env:
-
- #         API_KEY: ${{ secrets.[NUGET_API_KEY] }}
- #
- #       #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
+        #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
  #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.${{ env.PACKAGE_VERSION }}.nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 
