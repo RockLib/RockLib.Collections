@@ -7,36 +7,32 @@ on: [push]
     #branches: [main]
 
 jobs:
-  #install:
-  #  runs-on: windows-2022
-  #  steps:
-  #    - shell: pwsh
-  #      run: |
-  #        $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
-  #        $dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
-  #        # Install dotnet 4.8 targeting pack
-  #        Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
-  #        Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
-  #        dotnet --list-sdks
+  install:
+    runs-on: windows-latest
+    steps:
+      - shell: pwsh
+        run: |
+          $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
+          #$dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
+          # Install dotnet 4.8 targeting pack
+          Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
+          echo "$Env:TEMP"
+          ls $Env:TEMP
+          Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
+          Write-Host "$?"
+          dotnet --list-sdks
+          dotnet --list-runtimes
+          Write-Host "Installed 4.8 $LASTEXITCODE"
 
   initialize:
-    #needs: [install]
-    runs-on: windows-2022
+    needs: [install]
+    runs-on: windows-latest
     strategy:
       matrix:
         dotnet-version: ['3.1.x', '4.8', '6.0.x']
 
     steps:
       - uses: actions/checkout@v3
-      - name: Install .NET 4.8
-        if: ${{ matrix.dotnet-version }} == '4.8'
-        run: |
-          $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
-          $dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
-          # Install dotnet 4.8 targeting pack
-          Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
-          Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
-          dotnet --list-sdks
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v2
         with:
@@ -44,18 +40,27 @@ jobs:
   
   build_and_test:
     needs: initialize
-    runs-on: windows-2022
+    runs-on: windows-latest
     
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: dotnet restore
+      - uses: NuGet/setup-nuget@v1.0.5
+      - uses: microsoft/setup-msbuild@v1
 
       - name: Get .sln
         shell: pwsh
         run: |
           $sln = Get-ChildItem "*.sln" -Name
           echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Restore 4.8 packages
+        run: nuget restore ${{ env.SLN_NAME }}
+
+      - name: Build 4.8
+        run: msbuild ${{ env.SLN_NAME }} /p:Configuration=Release
 
       - name: Build
         run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
@@ -67,16 +72,18 @@ jobs:
   ok_to_publish:
     needs: build_and_test
     environment: Release
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - run: echo "Steps are required in jobs. An action is required in steps."
     
   publish:
     needs: ok_to_publish
-    runs-on: windows-2022
+    runs-on: windows-latest
   
     steps:
       - uses: actions/checkout@v3
+      - uses: NuGet/setup-nuget@v1.0.5
+      - uses: microsoft/setup-msbuild@v1
       - name: Set Env Variables
         run: |
           $repo_name = "${{ github.event.repository.name }}"
@@ -94,7 +101,9 @@ jobs:
       - name: Package 
         run: | 
           dotnet --list-sdks
-          dotnet pack ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj --configuration Release #--no-build -o "./"
+          nuget restore ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj
+          msbuild ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj -t:Pack
+          #dotnet pack ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj --configuration Release #--no-build -o "./"
       
       - name: Publish
         run: echo "${{ env.REPO_NAME }}/bin/Release/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg"
