@@ -7,70 +7,100 @@ on: [push]
     #branches: [main]
 
 jobs:
-  install:
+  fetch_code:
     runs-on: windows-latest
-    steps:
-      - shell: pwsh
-        run: |
-          $dotnet48_url = "https://download.visualstudio.microsoft.com/download/pr/9854b5f2-2341-4136-ad7d-1d881ab8d603/e3a011f2a41a59b086f78d64e1c7a3fc/NDP48-DevPack-ENU.exe"
-          #$dotnet_installer_url = "https://dot.net/v1/dotnet-install.ps1"
-          # Install dotnet 4.8 targeting pack
-          Invoke-WebRequest -Uri $dotnet48_url -OutFile "$Env:TEMP\dotnet48.exe" -UseBasicParsing
-          echo "$Env:TEMP"
-          ls $Env:TEMP
-          Start-Process -WindowStyle Hidden -Wait -FilePath "$Env:TEMP\dotnet48.exe" -ArgumentList " /quiet"
-          Write-Host "$?"
-          dotnet --list-sdks
-          dotnet --list-runtimes
-          Write-Host "Installed 4.8 $LASTEXITCODE"
-
-  initialize:
-    needs: [install]
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        dotnet-version: ['3.1.x', '4.8', '6.0.x']
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-  
-  build_and_test:
-    needs: initialize
+          name: workspace
+          path: ./
+
+  build_and_test_net6_0:
+    needs: fetch_code
     runs-on: windows-latest
-    
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: NuGet/setup-nuget@v1.0.5
-      - uses: microsoft/setup-msbuild@v1
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+      
+      - name: Build .NET 6
+        run: dotnet build --configuration Release --framework net6.0
+      
+      - name: Test .NET 6
+        run: dotnet test --no-restore --verbosity normal --framework net6.0
 
-      - name: Get .sln
-        shell: pwsh
-        run: |
-          $sln = Get-ChildItem "*.sln" -Name
-          echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
+  build_and_test_netcoreapp3_1:
+    needs: fetch_code
+    runs-on: windows-latest
 
-      - name: Install dependencies
-        run: dotnet restore
+    steps:
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
 
-      - name: Restore 4.8 packages
-        run: nuget restore ${{ env.SLN_NAME }}
+      - name: Build .NET Core 3.1
+        run: dotnet build --configuration Release --framework netcoreapp3.1
 
-      - name: Build 4.8
-        run: msbuild ${{ env.SLN_NAME }} /p:Configuration=Release
+      - name: Test .NET Core 3.1
+        run: dotnet test --no-restore --verbosity normal --framework netcoreapp3.1
 
-      - name: Build
-        run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
+  build_and_test_net48:
+    needs: fetch_code
+    runs-on: windows-latest
+
+    steps:
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+      
+      - name: Build .NET Framework 4.8
+        run: dotnet build --configuration Release --framework net48
+
+      - name: Test .NET Framework 4.8
+        run: dotnet test --no-restore --verbosity normal --framework net48
+
+  # build_and_test:
+  #   needs: initialize
+  #   runs-on: windows-latest
+    
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: NuGet/setup-nuget@v1.0.5
+  #     - uses: microsoft/setup-msbuild@v1
+
+  #     - name: Get .sln
+  #       shell: pwsh
+  #       run: |
+  #         $sln = Get-ChildItem "*.sln" -Name
+  #         echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
+
+  #     - name: Install dependencies
+  #       run: dotnet restore
+
+  #     - name: Restore 4.8 packages
+  #       run: nuget restore ${{ env.SLN_NAME }}
+
+  #     - name: Build 4.8
+  #       run: msbuild ${{ env.SLN_NAME }} /p:Configuration=Release
+
+  #     - name: Build
+  #       run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
         
-      - name: Test
-        run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal
+  #     - name: Test
+  #       run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal
 
   
   ok_to_publish:
-    needs: build_and_test
+    needs: [build_and_test_net6_0, build_and_test_netcoreapp3_1, build_and_test_net48]
     environment: Release
     runs-on: windows-latest
     steps:
