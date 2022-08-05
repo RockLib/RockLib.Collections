@@ -1,6 +1,9 @@
+# TODO: Any other scans to be run before publishing like CodeQL?
 name: Build and Test
 
-on: [push]
+# TODO: Need to determine trigger for running this workflow.
+# Trigger workflow from a GitHub release?
+on: [ push ]
   #push:
     #branches: [main]
   #pull_request:
@@ -20,125 +23,75 @@ jobs:
           name: workspace
           path: ./
 
-  build_and_test_net6_0:
+  build_and_test:
     needs: fetch_code
     runs-on: windows-latest
+    strategy:
+      matrix:
+        target_framework: [ net6.0, netcoreapp3.1, net48 ]
 
     steps:
       - name: Download workspace
         uses: actions/download-artifact@v3
         with:
           name: workspace
+          
+      - name: Build ${{ matrix.target_framework }}
+        run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
       
-      - name: Build .NET 6
-        run: dotnet build --configuration Release --framework net6.0
-      
-      - name: Test .NET 6
-        run: dotnet test --no-restore --verbosity normal --framework net6.0
+      - name: Test ${{ matrix.target_framework }}
+        run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
 
-  build_and_test_netcoreapp3_1:
-    needs: fetch_code
-    runs-on: windows-latest
-
-    steps:
-      - name: Download workspace
-        uses: actions/download-artifact@v3
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
         with:
           name: workspace
-
-      - name: Build .NET Core 3.1
-        run: dotnet build --configuration Release --framework netcoreapp3.1
-
-      - name: Test .NET Core 3.1
-        run: dotnet test --no-restore --verbosity normal --framework netcoreapp3.1
-
-  build_and_test_net48:
-    needs: fetch_code
-    runs-on: windows-latest
-
-    steps:
-      - name: Download workspace
-        uses: actions/download-artifact@v3
-        with:
-          name: workspace
-      
-      - name: Build .NET Framework 4.8
-        run: dotnet build --configuration Release --framework net48
-
-      - name: Test .NET Framework 4.8
-        run: dotnet test --no-restore --verbosity normal --framework net48
-
-  # build_and_test:
-  #   needs: initialize
-  #   runs-on: windows-latest
-    
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: NuGet/setup-nuget@v1.0.5
-  #     - uses: microsoft/setup-msbuild@v1
-
-  #     - name: Get .sln
-  #       shell: pwsh
-  #       run: |
-  #         $sln = Get-ChildItem "*.sln" -Name
-  #         echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
-
-  #     - name: Install dependencies
-  #       run: dotnet restore
-
-  #     - name: Restore 4.8 packages
-  #       run: nuget restore ${{ env.SLN_NAME }}
-
-  #     - name: Build 4.8
-  #       run: msbuild ${{ env.SLN_NAME }} /p:Configuration=Release
-
-  #     - name: Build
-  #       run: dotnet build "./${{ env.SLN_NAME }}" --configuration Release --no-restore
-        
-  #     - name: Test
-  #       run: dotnet test "./${{ env.SLN_NAME }}" --no-restore --verbosity normal
-
+          path: ./
   
+  # TODO: Need to set up approvals for multi-project solutions.
   ok_to_publish:
-    needs: [build_and_test_net6_0, build_and_test_netcoreapp3_1, build_and_test_net48]
+    needs: build_and_test
     environment: Release
     runs-on: windows-latest
     steps:
-      - run: echo "Steps are required in jobs. An action is required in steps."
-    
-  publish:
+      - run: echo "Publish package approved."
+  
+  # TODO: Need to dynamically set paths and names based on approved project.
+  pack_and_publish:
     needs: ok_to_publish
     runs-on: windows-latest
   
     steps:
-      - uses: actions/checkout@v3
-      - uses: NuGet/setup-nuget@v1.0.5
-      - uses: microsoft/setup-msbuild@v1
-      - name: Set Env Variables
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      - name: Set environment variable for publishing
         run: |
           $repo_name = "${{ github.event.repository.name }}"
           $csproj_path = "./$repo_name/RockLib.Collections.csproj"
           $csproj = [xml](Get-Content $csproj_path)
           $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
           $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+          $sln = Get-ChildItem "*.sln" -Name
 
-          echo "$repo_name"
-          echo "$csproj_path"
           echo "REPO_NAME=$repo_name" >> $env:GITHUB_ENV
           echo "PACKAGE_ID=$package_id" >> $env:GITHUB_ENV
           echo "PACKAGE_VERSION=$package_version" >> $env:GITHUB_ENV
+          echo "SLN_NAME=$sln" >> $env:GITHUB_ENV
 
-      - name: Package 
-        run: | 
-          dotnet --list-sdks
-          nuget restore ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj
-          msbuild ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj -t:Pack
-          #dotnet pack ${{ env.REPO_NAME }}/${{ env.PACKAGE_ID }}.csproj --configuration Release #--no-build -o "./"
+          echo "repo        - $repo_name"
+          echo "package id  - $package_id"
+          echo "version     - $package_version"
+          echo "solution    - $sln"
+
+      - name: Package
+        run: dotnet pack ${{ env.SLN_NAME }} --configuration Release --no-build
       
+      # TODO: Need to actually publish the package (swap in commented code).
       - name: Publish
         run: echo "${{ env.REPO_NAME }}/bin/Release/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg"
-        #env:
+        # env:
         #  API_KEY: ${{ secrets.[NUGET_API_KEY] }}
-
-        #TODO Replace package_version with an env that grabs the correct package version. Also replace RockLib.Collections with an env.
- #       run: dotnet nuget push "RockLib.Collections/bin/Release/RockLib.Collections.${{ env.PACKAGE_VERSION }}.nupkg" -s "https://api.nuget.org/v3/index.json" -k "$env:API_KEY" 
+        # run: dotnet nuget push ${{ env.REPO_NAME }}/bin/Release/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ env:API_KEY }}
