@@ -8,7 +8,8 @@ on: [ push ]
     #branches: [main]
   #pull_request:
     #branches: [main]
-
+env: 
+  APPROVED_PACKAGES: ","
 jobs:
   fetch_code:
     runs-on: windows-latest
@@ -22,6 +23,64 @@ jobs:
         with:
           name: workspace
           path: ./
+  
+  check_diff:
+    
+    runs-on: windows-latest
+
+    outputs: 
+      diff: ${{ steps.check-diff.outputs.diff }}
+      hasChanges: ${{ steps.check-diff.outputs.hasChanges }}
+  
+    steps:
+      - uses: actions/checkout@v3
+        with: 
+          fetch-depth: 0
+
+      - name: Get branch name (not pull request)
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME})" >> $GITHUB_ENV
+
+      - name: Get branch name (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
+
+      - name: Check Diff
+        id: check-diff
+        #gh api -H "Accept:application/vnd.github.diff" repos/RockLib/RockLib.Collections/compare/main...${{ env.BRANCH_NAME }}
+        shell: pwsh
+        run: |
+          #Get the diff between this branch and main
+          $diff = git diff --name-only origin/main..${{ env.BRANCH_NAME }}
+
+          #Find any changed csproj files and if it has any set hasChanges to true
+          $projChanged = $diff | Where-Object { $_ -Match '.csproj$' } #(DiffHere).Remove(0, $diff.IndexOf('/') + 1)
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch '.Tests.csproj$' }
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch 'Example.' } #TODO test this line.
+          $hasChanges = $projChanged.Length -gt 0
+
+          #Debugging
+          echo "$diff"
+          echo "$projChanged"
+          echo "$hasChanges"
+
+          #If 1+ projects changed: split the diff on spaces into an array
+          if ($hasChanges) {
+            $projChanged = Out-String -Stream -InputObject $projChanged
+            echo $projChanged
+            $projChanged = $projChanged.split(" ")
+            $projChangedJSON = ConvertTo-Json -Compress $projChanged
+          }
+          echo "$projChangedJSON"
+          
+          #Output
+          echo "::set-output name=hasChanges::$hasChanges"
+          echo "::set-output name=diff::$projChangedJSON"
+
+     #   env:
+     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_and_test:
     needs: fetch_code
@@ -50,23 +109,47 @@ jobs:
   
   # TODO: Need to set up approvals for multi-project solutions.
   ok_to_publish:
-    needs: build_and_test
-    environment: Release
+    name: ok_to_publish_${{ matrix.package }}
+    needs: [build_and_test, check_diff]
+    environment: 
+      name: Release ${{ matrix.package }}
+      url: ${{ matrix.package }}
     runs-on: windows-latest
+    if: needs.check_diff.outputs.hasChanges == 'True'
+    strategy:
+      fail-fast: false
+      matrix: 
+        package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
+    outputs: 
+      approved: ${{ steps.approved.outputs.projects }}
+
     steps:
-      - run: echo "Publish package approved."
+      - id: approved
+        shell: pwsh
+        run: |
+          echo "APPROVED_PACKAGES=${{ env.APPROVED_PACKAGES }},${{ matrix.package }}" >> $env:GITHUB_ENV
+          echo "${{ matrix.package }}"
+          echo "${{ env.APPROVED_PACKAGES }}"
+
+          $approvedJSON = ${{ env.APPROVED_PACKAGES }}.split(",")
+          $approvedJSON = $approvedJSON | Where-Object { $_ -Match '.csproj$' }
+          $approvedJSON = ConvertTo-Json -Compress $approvedJSON
+          echo "::set-output name=approved::$approvedJSON"
   
   # TODO: Need to dynamically set paths and names based on approved project.
   pack_and_publish:
-    needs: ok_to_publish
+    needs: [ok_to_publish]
     runs-on: windows-latest
+    strategy:
+      matrix: 
+        approved: ${{ fromJSON(needs.ok_to_publish.outputs.approved) }}
   
     steps:
       - name: Download workspace
         uses: actions/download-artifact@v3
         with:
           name: workspace
-
+      - run: echo "${{ matrix.approved }}"
       - name: Set environment variable for publishing
         run: |
           $repo_name = "${{ github.event.repository.name }}"
