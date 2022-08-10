@@ -43,7 +43,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
 
-      - name: Check diff
+      - name: Find updated project(s)
         id: check-diff
         shell: pwsh
         run: |
@@ -52,7 +52,7 @@ jobs:
 
           # Filter to only changed csproj files, excluding tests and examples.
           $projChanged = $diff | Where-Object { $_ -Match '.csproj$' }
-          # $projChanged = $projChanged | Where-Object { $_ -NotMatch '.Tests.csproj$' }
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch '.Tests.csproj$' }
           $projChanged = $projChanged | Where-Object { $_ -NotMatch 'Example.' }
           $projChanged = $projChanged | ForEach-Object -Process { $_.Remove(0, $_.IndexOf('/') + 1).Replace(".csproj","") }
           
@@ -62,20 +62,22 @@ jobs:
           # If there are changed projects, convert to JSON array.
           if ($hasChanges)
           {
-            $projChangedJSON = ConvertTo-Json -Compress $projChanged
-          }
-          # Else, set to none.
-          else
-          {
-            $projChangedJSON = "none" | ConvertTo-Json -Compress -AsArray
+            $projChangedJSON = ConvertTo-Json -Compress -AsArray $projChanged
           }
           
           # Set output.
           echo "::set-output name=hasChanges::$hasChanges"
           echo "::set-output name=diff::$projChangedJSON"
 
+      - name: Verify if any project(s) updated
+        if: ${{ !steps.check_diff.outputs.hasChanges }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed("No project has been updated")
+
   build_and_test:
-    needs: fetch_code
+    needs: [ check_diff, fetch_code ]
     runs-on: windows-latest
     strategy:
       matrix:
@@ -99,72 +101,57 @@ jobs:
           name: workspace
           path: ./
   
-  ok_to_publish:
-    name: ok_to_publish_${{ matrix.package }}
+  pack_and_publish:
+    name: pack_and_publish_${{ matrix.package }}
     needs: [ check_diff, build_and_test ]
+    runs-on: windows-latest
     if: needs.check_diff.outputs.hasChanges
     environment: 
       name: Release ${{ matrix.package }}
-      url: ${{ matrix.package }}
-    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix: 
         package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
-
+  
     steps:
       - name: Package ${{ matrix.package }} approved
         run: echo "Package ${{ matrix.package }} approved for publishing."
-  
-  # TODO: Need to dynamically set paths and names based on approved project.
-  pack_and_publish:
-    name: pack_and_publish_${{ matrix.package }}
-    needs: [ check_diff, ok_to_publish ]
-    runs-on: windows-latest
-    if: needs.check_diff.outputs.hasChanges
-    environment: 
-      name: Release ${{ matrix.package }}
-      url: ${{ matrix.package }}
-    strategy:
-      fail-fast: false
-      matrix: 
-        package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
-  
-    steps:
+
       - name: Download workspace
         uses: actions/download-artifact@v3
         with:
           name: workspace
 
-      - name: Set environment variable for publishing
-        shell: pwsh
+      - name: Set environment variables for publishing
         run: |
           # Set project to pack.
-          $csproj = "${{ matrix.package }}.csproj"
-          echo "CSPROJ=$csproj" >> $env:GITHUB_ENV
+          $csprojName = "${{ matrix.package }}.csproj"
+          echo "csprojName - $csprojName"
+
+          # Set project path.
+          $csprojPath = "${{ matrix.package }}/${{ matrix.package }}.csproj"
+          echo "CSPROJ_PATH=$csprojPath" >> $env:GITHUB_ENV
+          echo "csprojPath - $csprojPath"
+
+          # Get XML object for csproj file.
+          $csprojXmlObject = [xml](Get-Content $csprojPath)
 
           # Set package name for publishing.
-          $package_id = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
-          echo "PACKAGE_ID=$package_id" >> $env:GITHUB_ENV
+          $packageId = $csprojXmlObject.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
+          echo "PACKAGE_ID=$packageId" >> $env:GITHUB_ENV
+          echo "packageId - $packageId"
 
           # Set version number for publishing.
-          $package_version = $csproj.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
-          echo "PACKAGE_VERSION=$package_version" >> $env:GITHUB_ENV
-
-          echo "project             - $csproj"
-          echo "package id          - $package_id"
-          echo "package version     - $package_version"
-
+          $packageVersion = $csprojXmlObject.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+          echo "PACKAGE_VERSION=$packageVersion" >> $env:GITHUB_ENV
+          echo "packageVersion - $packageVersion"
 
       - name: Package
-        run: dotnet pack ${{ env.CSPROJ }} --configuration Release --no-build --output nupkgs
-
-      - name: Directory structure for determining path to package for publishing
-        run: tree
+        run: dotnet pack ${{ env.CSPROJ_PATH }} --configuration Release --no-build --output nupkgs
       
       # TODO: Need to actually publish the package (swap in commented code).
       - name: Publish
         run: echo "nupkgs/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg"
         # env:
         #  API_KEY: ${{ secrets.NUGET_API_KEY }}
-        # run: dotnet nuget push nupkgs/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ env:API_KEY }}
+        # run: dotnet nuget push nupkgs/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg --api-key ${{ env:API_KEY }} --source https://api.nuget.org/v3/index.json
