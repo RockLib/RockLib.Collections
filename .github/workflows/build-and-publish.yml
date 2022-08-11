@@ -10,20 +10,8 @@ on: [ push ]
     #branches: [main]
 
 jobs:
-  fetch_code:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Upload workspace
-        uses: actions/upload-artifact@v3
-        with:
-          name: workspace
-          path: ./
-  
   check_diff:
+    name: Fetch code and check diff
     runs-on: windows-latest
     outputs: 
       diff: ${{ steps.check-diff.outputs.diff }}
@@ -69,15 +57,29 @@ jobs:
           echo "::set-output name=hasChanges::$hasChanges"
           echo "::set-output name=diff::$projChangedJSON"
 
+          echo "hasChanges value: $hasChanges"
+          $hasChanges = -Not $hasChanges
+          echo "-Not hasChanges value: $hasChanges"
+
       - name: Verify if any project(s) updated
-        if: ${{ !steps.check_diff.outputs.hasChanges }}
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           script: |
-            core.setFailed("No project has been updated")
+            if ("${{ steps.check-diff.outputs.hasChanges }}" == "True") {
+              console.log("Project(s) have been updated");
+            } else {
+              core.setFailed("No project has been updated");
+            }
+      
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
 
   build_and_test:
-    needs: [ check_diff, fetch_code ]
+    name: Build and test projects
+    needs: check_diff
     runs-on: windows-latest
     strategy:
       matrix:
@@ -102,7 +104,7 @@ jobs:
           path: ./
   
   pack_and_publish:
-    name: pack_and_publish_${{ matrix.package }}
+    name: Pack and publish
     needs: [ check_diff, build_and_test ]
     runs-on: windows-latest
     if: needs.check_diff.outputs.hasChanges
@@ -122,7 +124,7 @@ jobs:
         with:
           name: workspace
 
-      - name: Set environment variables for publishing
+      - name: Set environment variables for publishing ${{ matrix.package }}
         run: |
           # Set project to pack.
           $csprojName = "${{ matrix.package }}.csproj"
@@ -146,11 +148,11 @@ jobs:
           echo "PACKAGE_VERSION=$packageVersion" >> $env:GITHUB_ENV
           echo "packageVersion - $packageVersion"
 
-      - name: Package
+      - name: Package ${{ matrix.package }}
         run: dotnet pack ${{ env.CSPROJ_PATH }} --configuration Release --no-build --output nupkgs
       
       # TODO: Need to actually publish the package (swap in commented code).
-      - name: Publish
+      - name: Publish ${{ matrix.package }}
         run: echo "nupkgs/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg"
         # env:
         #  API_KEY: ${{ secrets.NUGET_API_KEY }}
