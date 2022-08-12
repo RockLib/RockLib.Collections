@@ -57,10 +57,6 @@ jobs:
           echo "::set-output name=hasChanges::$hasChanges"
           echo "::set-output name=diff::$projChangedJSON"
 
-          echo "hasChanges value: $hasChanges"
-          $hasChanges = -Not $hasChanges
-          echo "-Not hasChanges value: $hasChanges"
-
       - name: Verify if any project(s) updated
         uses: actions/github-script@v6
         with:
