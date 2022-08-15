@@ -18,20 +18,12 @@ jobs:
         with: 
           fetch-depth: 0
 
-      - name: Get branch name (not pull request)
-        if: github.event_name != 'pull_request'
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME})" >> $GITHUB_ENV
-
-      - name: Get branch name (pull request)
-        if: github.event_name == 'pull_request'
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
-
       - name: Find updated project(s)
         id: check-diff
         shell: pwsh
         run: |
-          # Get the diff between this branch and main.
-          $diff = git diff --name-only origin/main..${{ env.BRANCH_NAME }}
+          # Get the diff between main to the previous commit to main.
+          $diff = git diff --name-only origin/main^...origin/main
 
           # Filter to only changed csproj files, excluding tests and examples.
           $projChanged = $diff | Where-Object { $_ -Match '.csproj$' }
@@ -98,7 +90,6 @@ jobs:
     name: Pack and publish
     needs: [ check_diff, build_and_test ]
     runs-on: windows-latest
-    if: needs.check_diff.outputs.hasChanges
     environment: 
       name: Release ${{ matrix.package }}
     strategy:
