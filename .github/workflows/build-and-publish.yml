@@ -1,13 +1,8 @@
-# TODO: Any other scans to be run before publishing like CodeQL?
 name: Build and Publish
 
-# TODO: Need to determine trigger for running this workflow.
-# Trigger workflow from a GitHub release?
-on: [ push ]
-  #push:
-    #branches: [main]
-  #pull_request:
-    #branches: [main]
+on:
+  release:
+    types: published
 
 jobs:
   check_diff:
@@ -18,7 +13,7 @@ jobs:
       hasChanges: ${{ steps.check-diff.outputs.hasChanges }}
   
     steps:
-      - name: Fetch commit history
+      - name: Fetch code with commit history
         uses: actions/checkout@v3
         with: 
           fetch-depth: 0
