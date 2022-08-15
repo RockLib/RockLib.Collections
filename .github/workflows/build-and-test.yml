@@ -1,0 +1,24 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_test:
+    name: Build and test projects
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target_framework: [ net6.0, netcoreapp3.1, net48 ]
+
+    steps:
+      - name: Fetch code
+        uses: actions/checkout@v3
+          
+      - name: Build ${{ matrix.target_framework }}
+        run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
+      
+      - name: Test ${{ matrix.target_framework }}
+        run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
