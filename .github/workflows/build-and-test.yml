@@ -1,24 +1,76 @@
 name: Build and Test
 
+####################################################################################################
+##  WORKFLOW TRIGGER
+####################################################################################################
 on:
+  # Workflow will run on any pull request to main.
   pull_request:
     branches:
       - main
 
+####################################################################################################
+##  WORKFLOW JOBS
+####################################################################################################
 jobs:
   build_and_test:
     name: Build and test projects
+    # Using the latest Windows GitHub-hosted runner.
     runs-on: windows-latest
+    # The matrix is used to define the frameworks that the project(s) support.
+    # For each value in the matrix a concurrent version of the job is run using that value.
     strategy:
       matrix:
         target_framework: [ net6.0, netcoreapp3.1, net48 ]
 
     steps:
+      # Using Github checkout action to retrieve the codebase.
       - name: Fetch code
         uses: actions/checkout@v3
-          
+      
+      # Using dotnet build to build the solution using a target framework specified in the matrix.
       - name: Build ${{ matrix.target_framework }}
         run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
       
+      # Using dotnet test to run any unit tests found in the solution using a target framework specified in the matrix.
+      # If any test fails, the job and workflow will fail.
       - name: Test ${{ matrix.target_framework }}
         run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
+
+
+  code_analysis:
+    name: Run code analysis
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    outputs: 
+      repo_sln: ${{ steps.get-sln.outputs.repo_sln }}
+    
+    steps:
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      - name: Get root project sln for Snyk scan
+        id: get-sln
+        run: |
+          pwd
+          repoSln=$(find . -name "*.sln")
+          repoSln=${repoSln:2}
+          echo $repoSln
+          echo "::set-output name=repo_sln::$repoSln"
+
+      - name: Run Snyk test
+        uses: snyk/actions/dotnet@master
+        continue-on-error: true
+        env:
+          SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }} --sarif-file-output=snyk.sarif
+      
+      - name: Upload Snyk result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
+          
