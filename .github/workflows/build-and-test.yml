@@ -80,7 +80,7 @@ jobs:
         with:
           args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }} --sarif-file-output=snyk.sarif
 
-      # Use GitHub code scanning action to upload Snyk results to repo Security tab...
+      # Use GitHub code scanning action to upload Snyk results to repo Security tab.
       - name: Upload Snyk result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
         with:

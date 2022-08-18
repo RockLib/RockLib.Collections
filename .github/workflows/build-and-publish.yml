@@ -123,6 +123,10 @@ jobs:
     needs: build_and_test
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
+    # Environment variables to use with steps in this job.
+    env:
+      # Use a comma separated list of directories or files to exclude from Snyk test scan.
+      SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
     # Creates output variables to be used in steps or other jobs.
     outputs: 
       repo_sln: ${{ steps.get-sln.outputs.repo_sln }}
@@ -144,24 +148,32 @@ jobs:
           echo $repoSln
           echo "::set-output name=repo_sln::$repoSln"
 
-      # Using Snyk provided action for dotnet projects.
+      # Using Snyk provided action for Snyk test for dotnet projects.
       - name: Run Snyk test
         uses: snyk/actions/dotnet@master
         # Continue on error needs to be set to true to upload the results at the end.
         continue-on-error: true 
         env:
-          # Use a comma separated list of directories or files to exclude from Snyk test scan.
-          SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
           # Uses SNYK_TOKEN from org secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }} --sarif-file-output=snyk.sarif
 
-      # Use GitHub code scanning action to upload Snyk results to repo Security tab...
+      # Use GitHub code scanning action to upload Snyk results to repo Security tab.
       - name: Upload Snyk result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk.sarif
+      
+      # Using Snyk provided action for Snyk monitor command.
+      - name: Run Snyk monitor
+        uses: snyk/actions/node@master
+        env:
+          # Uses SNYK_TOKEN from org secrets
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }}
 
 
   # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
