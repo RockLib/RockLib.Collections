@@ -9,6 +9,7 @@ on:
     branches:
       - main
 
+
 ####################################################################################################
 ##  WORKFLOW JOBS
 ####################################################################################################
@@ -38,19 +39,25 @@ jobs:
         run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
 
 
+  # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
   code_analysis:
     name: Run code analysis
+    # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
+    # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
+    # Creates output variables to be used in steps or other jobs.
     outputs: 
       repo_sln: ${{ steps.get-sln.outputs.repo_sln }}
     
     steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
       - name: Download workspace
         uses: actions/download-artifact@v3
         with:
           name: workspace
 
+      # Using a script to get the filename of the sln file at the root of the project.
       - name: Get root project sln for Snyk scan
         id: get-sln
         run: |
@@ -60,15 +67,20 @@ jobs:
           echo $repoSln
           echo "::set-output name=repo_sln::$repoSln"
 
+      # Using Snyk provided action for dotnet projects.
       - name: Run Snyk test
         uses: snyk/actions/dotnet@master
-        continue-on-error: true
+        # Continue on error needs to be set to true to upload the results at the end.
+        continue-on-error: true 
         env:
+          # Use a comma separated list of directories or files to exclude from Snyk test scan.
           SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
+          # Uses SNYK_TOKEN from org secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }} --sarif-file-output=snyk.sarif
-      
+
+      # Use GitHub code scanning action to upload Snyk results to repo Security tab...
       - name: Upload Snyk result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
         with:
