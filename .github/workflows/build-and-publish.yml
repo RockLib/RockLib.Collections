@@ -1,0 +1,183 @@
+name: Build and Publish
+
+####################################################################################################
+##  WORKFLOW TRIGGER
+####################################################################################################
+on:
+  # Workflow will run when a release is published.
+  release:
+    types: published
+
+####################################################################################################
+##  WORKFLOW JOBS
+####################################################################################################
+jobs:
+  # check_diff job pulls the code and checks that updates to at least one csproj file have been made.
+  check_diff:
+    name: Fetch code and check diff
+    # Using the latest Windows GitHub-hosted runner.
+    runs-on: windows-latest
+    # Creates output variables to be used in steps or other jobs.
+    outputs: 
+      diff: ${{ steps.check-diff.outputs.diff }}
+      hasChanges: ${{ steps.check-diff.outputs.hasChanges }}
+  
+    steps:
+      # Using Github checkout action to retrieve the codebase with commit history.
+      - name: Fetch code with commit history
+        uses: actions/checkout@v3
+        with: 
+          fetch-depth: 0
+
+      # Using a powershell script to find which projects, if any, have been updated.
+      - name: Find updated project(s)
+        id: check-diff
+        shell: pwsh
+        run: |
+          # Get the diff between main to the previous commit to main.
+          $diff = git diff --name-only origin/main^...origin/main
+          echo "file(s) updated - $diff"  
+
+          # Filter to only changed csproj files, excluding tests and examples.
+          $projChanged = $diff | Where-Object { $_ -Match '.csproj$' }
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch '.Tests.csproj$' }
+          $projChanged = $projChanged | Where-Object { $_ -NotMatch 'Example.' }
+          $projChanged = $projChanged | ForEach-Object -Process { $_.Remove(0, $_.IndexOf('/') + 1).Replace(".csproj","") }
+          echo "project(s) updated - $projChanged"
+          
+          # Set hasChanges to true if there are any changed projects after filtering.
+          $hasChanges = $projChanged.Length -gt 0
+
+          # If there are changed projects, convert to JSON array.
+          if ($hasChanges)
+          {
+            $projChangedJSON = ConvertTo-Json -Compress -AsArray $projChanged
+          }
+          
+          # Set output.
+          echo "::set-output name=hasChanges::$hasChanges"
+          echo "::set-output name=diff::$projChangedJSON"
+
+      # Using Github script action to fail the workflow if no project file has been updated.
+      - name: Verify if any project(s) updated
+        uses: actions/github-script@v6
+        with:
+          script: |
+            if ("${{ steps.check-diff.outputs.hasChanges }}" == "True") {
+              console.log("Project(s) have been updated");
+            } else {
+              core.setFailed("No project has been updated");
+            }
+      
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
+
+  # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
+  build_and_test:
+    name: Build and test projects
+    # This job will not run until check_diff is complete and passes.
+    needs: check_diff
+    # Using the latest Windows GitHub-hosted runner.
+    runs-on: windows-latest
+    # The matrix is used to define the frameworks that the project(s) support.
+    # For each value in the matrix a concurrent version of the job is run using that value.
+    # If any version of the job fails, it will cancel the other jobs running.
+    strategy:
+      matrix:
+        target_framework: [ net6.0, netcoreapp3.1, net48 ]
+
+    steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+          
+      # Using dotnet build to build the solution using a target framework specified in the matrix.
+      - name: Build ${{ matrix.target_framework }}
+        run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
+      
+      # Using dotnet test to run any unit tests found in the solution using a target framework specified in the matrix.
+      # If any test fails, the job and workflow will fail.
+      - name: Test ${{ matrix.target_framework }}
+        run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
+
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
+  
+  # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
+  pack_and_publish:
+    name: Pack and publish
+    # This job will not run until check_diff and build_and_test are complete and pass.
+    needs: [ check_diff, build_and_test ]
+    # Using the latest Windows GitHub-hosted runner.
+    runs-on: windows-latest
+    # Using approved projects from the matrix, the Release environment is called for those projects.
+    # Setting the environment to require approval within the repo GitHub environment settings gives us an approval step.
+    # All approvals must be approved or rejected before continuing.
+    # Without at least one approval this job will not run.
+    environment: 
+      name: Release ${{ matrix.package }}
+    # The matrix is used to define the projects that have been approved for publishing.
+    # For each value in the matrix a concurrent version of the job is run using that value.
+    # If any version of the job fails, the other jobs will keep running.
+    strategy:
+      fail-fast: false
+      matrix: 
+        package: ${{ fromJSON(needs.check_diff.outputs.diff) }}
+  
+    steps:
+      # Displays the package that was approved.
+      - name: Package ${{ matrix.package }} approved
+        run: echo "Package ${{ matrix.package }} approved for publishing."
+
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      # Run script to get values needed to package and publish.
+      # Using values from the matrix to set variables for each package.
+      - name: Set environment variables for publishing ${{ matrix.package }}
+        run: |
+          # Set project to pack.
+          $csprojName = "${{ matrix.package }}.csproj"
+          echo "csprojName - $csprojName"
+
+          # Set project path.
+          $csprojPath = "${{ matrix.package }}/${{ matrix.package }}.csproj"
+          echo "CSPROJ_PATH=$csprojPath" >> $env:GITHUB_ENV
+          echo "csprojPath - $csprojPath"
+
+          # Get XML object for csproj file.
+          $csprojXmlObject = [xml](Get-Content $csprojPath)
+
+          # Set package name for publishing.
+          $packageId = $csprojXmlObject.SelectSingleNode("/Project/PropertyGroup/PackageId").InnerText
+          echo "PACKAGE_ID=$packageId" >> $env:GITHUB_ENV
+          echo "packageId - $packageId"
+
+          # Set version number for publishing.
+          $packageVersion = $csprojXmlObject.SelectSingleNode("/Project/PropertyGroup/PackageVersion").InnerText
+          echo "PACKAGE_VERSION=$packageVersion" >> $env:GITHUB_ENV
+          echo "packageVersion - $packageVersion"
+
+      # Using dotnet pack to package the specified project and output the nuget package to a target directory.
+      - name: Package ${{ matrix.package }}
+        run: dotnet pack ${{ env.CSPROJ_PATH }} --configuration Release --no-build --output nupkgs
+      
+      # Using dotnet nuget push to publish the specified package to NuGet.org.
+      - name: Publish ${{ matrix.package }}
+        # Getting the NUGET_API_KEY from the org secrets.
+        env:
+          API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push nupkgs/${{ env.PACKAGE_ID }}.${{ env.PACKAGE_VERSION }}.nupkg --api-key ${{ env.API_KEY }} --source https://api.nuget.org/v3/index.json
