@@ -37,6 +37,13 @@ jobs:
       # If any test fails, the job and workflow will fail.
       - name: Test ${{ matrix.target_framework }}
         run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
+      
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
 
 
   # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
