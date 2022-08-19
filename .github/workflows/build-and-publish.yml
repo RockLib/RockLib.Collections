@@ -6,7 +6,7 @@ name: Build and Publish
 on:
   # Workflow will run when a release is published.
   release:
-    types: published
+    types: [ released, prereleased ]
 
 
 ####################################################################################################
