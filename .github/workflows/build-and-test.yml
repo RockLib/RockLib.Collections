@@ -51,9 +51,9 @@ jobs:
     needs: build_and_test
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
-    env:
-      # Use a comma separated list of directories or files to exclude from Snyk test scan.
-      SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
+    # Creates output variables to be used in steps or other jobs.
+    outputs: 
+      scan_exclusions: ${{ steps.scan-exclusions.outputs.scan_exclusions }}
     
     steps:
       # Using GitHub download-artifact action to get the workspace from the last job.
@@ -61,6 +61,31 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: workspace
+
+      # Creates a comma separated list of directories or files to exclude from code scans.
+      - name: Find test or example project(s)
+        id: scan-exclusions
+        shell: pwsh
+        run: |
+          # Set starting value of folders and exclusions
+          allFolders=$(find . -maxdepth 1 -type d)
+          scanExclusions=Tests,Examples
+
+          # Filter to only Test and Example projects and add them to scanExclusions.
+          for folder in ${folders[*]}
+          do
+            echo $folder
+            if [[ $folder =~ ^RockLib.*Tests$ ]]
+            then
+              scanExclusions+=",${folder}"
+            elif [[ $folder =~ ^Example.*$ ]]
+            then
+              scanExclusions+=",${folder}"
+            fi
+          done
+          
+          # Set output.
+          echo "::set-output name=scan_exclusions::$scanExclusions"
 
       # Using Snyk provided action for dotnet projects.
       - name: Run Snyk test
@@ -71,7 +96,7 @@ jobs:
           # Uses SNYK_TOKEN from org secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }} --sarif-file-output=snyk.sarif
+          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
 
       # Use GitHub code scanning action to upload Snyk results to repo Security tab.
       - name: Upload Snyk result to GitHub Code Scanning
