@@ -127,9 +127,6 @@ jobs:
     env:
       # Use a comma separated list of directories or files to exclude from Snyk test scan.
       SNYK_EXCLUDES: Tests,Examples,RockLib.Collections.Tests
-    # Creates output variables to be used in steps or other jobs.
-    outputs: 
-      repo_sln: ${{ steps.get-sln.outputs.repo_sln }}
     
     steps:
       # Using GitHub download-artifact action to get the workspace from the last job.
@@ -137,16 +134,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: workspace
-
-      # Using a script to get the filename of the sln file at the root of the project.
-      - name: Get root project sln for Snyk scan
-        id: get-sln
-        run: |
-          pwd
-          repoSln=$(find . -name "*.sln")
-          repoSln=${repoSln:2}
-          echo $repoSln
-          echo "::set-output name=repo_sln::$repoSln"
 
       # Using Snyk provided action for Snyk test for dotnet projects.
       - name: Run Snyk test
