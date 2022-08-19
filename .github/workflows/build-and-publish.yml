@@ -8,7 +8,6 @@ on:
   release:
     types: [ released, prereleased ]
 
-
 ####################################################################################################
 ##  WORKFLOW JOBS
 ####################################################################################################
@@ -77,7 +76,6 @@ jobs:
           name: workspace
           path: ./
 
-
   # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
   build_and_test:
     name: Build and test projects
@@ -115,7 +113,6 @@ jobs:
           name: workspace
           path: ./
   
-
   # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
   code_analysis:
     name: Run code analysis
@@ -161,7 +158,6 @@ jobs:
         with:
           command: monitor
           args: --all-projects --exclude=${{ env.SNYK_EXCLUDES }}
-
 
   # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
   pack_and_publish:

@@ -9,7 +9,6 @@ on:
     branches:
       - main
 
-
 ####################################################################################################
 ##  WORKFLOW JOBS
 ####################################################################################################
@@ -45,7 +44,6 @@ jobs:
           name: workspace
           path: ./
 
-
   # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
   code_analysis:
     name: Run code analysis
@@ -80,4 +78,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk.sarif
-          
