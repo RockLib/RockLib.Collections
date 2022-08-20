@@ -70,7 +70,8 @@ jobs:
           # Filter to only Test and Example projects and add them to scanExclusions.
           $scanExclusions = Get-ChildItem -Directory | Select-Object Name
           $scanExclusions = $scanExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
-          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -NoTypeInformation | Select-Object -Skip 1
+          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
+          echo "scan exclusions - $scanExclusions"
 
           # Set output.
           echo "::set-output name=scan_exclusions::$scanExclusions"
