@@ -5,10 +5,9 @@ name: Build and Test
 ####################################################################################################
 on:
   # Workflow will run on any pull request to main.
-  push:
-  #pull_request:
-  #  branches:
-  #    - main
+  pull_request:
+    branches:
+      - main
 
 ####################################################################################################
 ##  WORKFLOW JOBS
@@ -50,6 +49,6 @@ jobs:
     name: Run code analysis
     # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
-    # Call the reusable Snyk workflow #and provide it the Snyk token.
+    # Call the reusable Snyk workflow and provide it the Snyk token through inheriting.
     uses: ./.github/workflows/snyk-scan.yml
     secrets: inherit

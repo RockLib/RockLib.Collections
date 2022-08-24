@@ -6,10 +6,10 @@ name: Snyk Scan
 on:
   # Workflow will run when called by another workflow.
   workflow_call:
-    # Require that the Synk token is provided to this workflow
-  #  secrets:
-  #    SNYK_TOKEN:
-  #      required: true
+    # Output the list of scan exclusions to be used by the calling job.
+    outputs:
+      scan_exclusions:
+        value: ${{ jobs.code_analysis.outputs.scan_exclusions }}
 
 ####################################################################################################
 ##  WORKFLOW JOBS

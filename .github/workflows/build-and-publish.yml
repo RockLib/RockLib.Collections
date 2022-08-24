@@ -118,16 +118,18 @@ jobs:
     name: Run code analysis
     # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
+    # Call the reusable Snyk workflow and provide it the Snyk token through inheriting.
+    uses: ./.github/workflows/snyk-scan.yml
+    secrets: inherit
+
+  # code_analysis_monitor job starts monitoring all projects in the repo.
+  code_analysis_monitor:
+    name: Start code analysis monitoring
+    # This job will not run until code_analysis is complete and passes.
+    needs: code_analysis
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
-        
     steps:
-      # Call the reusable Snyk workflow and provide it the Snyk token.
-      - name: Call Snyk workflow
-        uses: ./.github/workflows/snyk-scan.yml
-        with:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
       # Using Snyk provided action for Snyk monitor command.
       - name: Run Snyk monitor
         uses: snyk/actions/node@master
@@ -136,7 +138,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: monitor
-          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }}
+          args: --all-projects --exclude=${{ needs.code_analysis.outputs.scan_exclusions }} 
 
   # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
   pack_and_publish:
