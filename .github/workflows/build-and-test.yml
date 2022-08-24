@@ -5,9 +5,10 @@ name: Build and Test
 ####################################################################################################
 on:
   # Workflow will run on any pull request to main.
-  pull_request:
-    branches:
-      - main
+  push:
+  #pull_request:
+  #  branches:
+  #    - main
 
 ####################################################################################################
 ##  WORKFLOW JOBS
@@ -49,46 +50,6 @@ jobs:
     name: Run code analysis
     # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
-    # Using the latest Ubuntu GitHub-hosted runner.
-    runs-on: ubuntu-latest
-    # Creates output variables to be used in steps or other jobs.
-    outputs: 
-      scan_exclusions: ${{ steps.scan-exclusions.outputs.scan_exclusions }}
-    
-    steps:
-      # Using GitHub download-artifact action to get the workspace from the last job.
-      - name: Download workspace
-        uses: actions/download-artifact@v3
-        with:
-          name: workspace
-
-      # Creates a comma separated list of directories or files to exclude from code scans.
-      - name: Find test or example project(s)
-        id: scan-exclusions
-        shell: pwsh
-        run: |
-          # Filter to only Test and Example projects and add them to scanExclusions.
-          $scanExclusions = Get-ChildItem -Directory | Select-Object Name
-          $scanExclusions = $scanExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
-          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
-          echo "scan exclusions - $scanExclusions"
-
-          # Set output.
-          echo "::set-output name=scan_exclusions::$scanExclusions"
-
-      # Using Snyk provided action for dotnet projects.
-      - name: Run Snyk test
-        uses: snyk/actions/dotnet@master
-        # Continue on error needs to be set to true to upload the results at the end.
-        continue-on-error: true 
-        env:
-          # Uses SNYK_TOKEN from org secrets
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
-
-      # Use GitHub code scanning action to upload Snyk results to repo Security tab.
-      - name: Upload Snyk result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: snyk.sarif
+    # Call the reusable Snyk workflow #and provide it the Snyk token.
+    uses: ./.github/workflows/snyk-scan.yml
+    secrets: inherit
