@@ -55,6 +55,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
+          json: true
 
       # Use GitHub code scanning action to upload Snyk results to repo Security tab.
       - name: Upload Snyk result to GitHub Code Scanning
