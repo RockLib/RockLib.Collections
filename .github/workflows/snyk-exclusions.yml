@@ -1,0 +1,46 @@
+name: Snyk Exclusions
+
+####################################################################################################
+##  WORKFLOW TRIGGER
+####################################################################################################
+on:
+  # Workflow will run when called by another workflow.
+  workflow_call:
+    # Output the list of scan exclusions to be used by the calling job.
+    outputs:
+      scan_exclusions:
+        value: ${{ jobs.snyk_exclusions.outputs.scan_exclusions }}
+
+####################################################################################################
+##  WORKFLOW JOBS
+####################################################################################################
+jobs:
+  # snyk_exclusions finds test or example projects to exclude from Snyk scans.
+  snyk_exclusions:
+    name: Run Snyk exclusions
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    # Creates output variables to be used in steps or other jobs.
+    outputs: 
+      scan_exclusions: ${{ steps.scan-exclusions.outputs.scan_exclusions }}
+    
+    steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+    # Creates a comma separated list of directories or files to exclude from code scans.
+      - name: Find test or example project(s) to exclude
+        id: scan-exclusions
+        shell: pwsh
+        run: |
+          # Filter to only Test and Example projects and add them to scanExclusions.
+          $scanExclusions = Get-ChildItem -Directory | Select-Object Name
+          $scanExclusions = $scanExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
+          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
+          echo "scan exclusions - $scanExclusions"
+
+          # Set output.
+          echo "::set-output name=scan_exclusions::$scanExclusions"

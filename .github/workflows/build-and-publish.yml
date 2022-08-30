@@ -76,9 +76,9 @@ jobs:
           name: workspace
           path: ./
 
-  # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
-  build_and_test:
-    name: Build and test projects
+  # build job builds for each of the target frameworks of the solution.
+  build:
+    name: Build projects
     # This job will not run until check_diff is complete and passes.
     needs: check_diff
     # Using the latest Windows GitHub-hosted runner.
@@ -100,11 +100,6 @@ jobs:
       # Using dotnet build to build the solution using a target framework specified in the matrix.
       - name: Build ${{ matrix.target_framework }}
         run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
-      
-      # Using dotnet test to run any unit tests found in the solution using a target framework specified in the matrix.
-      # If any test fails, the job and workflow will fail.
-      - name: Test ${{ matrix.target_framework }}
-        run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
 
       # Using GitHub upload-artifact action to persist the workspace for the next job.
       - name: Upload workspace
@@ -112,24 +107,29 @@ jobs:
         with:
           name: workspace
           path: ./
-  
-  # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
-  code_analysis:
-    name: Run code analysis
-    # This job will not run until build_and_test is complete and passes.
-    needs: build_and_test
-    # Call the reusable Snyk workflow and provide it the Snyk token through inheriting.
-    uses: ./.github/workflows/snyk-scan.yml
-    secrets: inherit
 
-  # code_analysis_monitor job starts monitoring all projects in the repo.
-  code_analysis_monitor:
-    name: Start code analysis monitoring
-    # This job will not run until code_analysis is complete and passes.
-    needs: code_analysis
+  # Calls snyk-exclusion reusable workflow.
+  snyk_exclusions:
+    name: Snyk exclusions
+    # This job will not run until build is complete and passes.
+    needs: build
+    uses: ./.github/workflows/snyk-exclusions.yml
+
+  # snyk_monitor job reports project to Snyk UI for vulnerability monitoring.
+  snyk_monitor:
+    name: Snyk monitor
+    # This job will not run until snyk_exclusions and build are complete and pass.
+    needs: snyk_exclusions
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
+    
     steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
       # Using Snyk provided action for Snyk monitor command.
       - name: Run Snyk monitor
         uses: snyk/actions/node@master
@@ -138,13 +138,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: monitor
-          args: --all-projects --exclude=${{ needs.code_analysis.outputs.scan_exclusions }} 
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.scan_exclusions }}
 
   # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
   pack_and_publish:
     name: Pack and publish
-    # This job will not run until check_diff and build_and_test are complete and pass.
-    needs: [ check_diff, code_analysis ]
+    # This job will not run until check_diff and build are complete and pass.
+    needs: [ check_diff, build ]
     # Using the latest Windows GitHub-hosted runner.
     runs-on: windows-latest
     # Using approved projects from the matrix, the Release environment is called for those projects.

@@ -13,6 +13,7 @@ on:
 ##  WORKFLOW JOBS
 ####################################################################################################
 jobs:
+  # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
   build_and_test:
     name: Build and test projects
     # Using the latest Windows GitHub-hosted runner.
@@ -44,11 +45,41 @@ jobs:
           name: workspace
           path: ./
 
-  # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
-  code_analysis:
-    name: Run code analysis
+  # Calls snyk-exclusion reusable workflow.
+  snyk_exclusions:
+    name: Snyk exclusions
     # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
-    # Call the reusable Snyk workflow and provide it the Snyk token through inheriting.
-    uses: ./.github/workflows/snyk-scan.yml
-    secrets: inherit
+    uses: ./.github/workflows/snyk-exclusions.yml
+
+  # snyk_test job runs scan against project dependencies, looking for vulnerabilities.
+  snyk_test:
+    name: Snyk test
+    # This job will not run until build_and_test job finishes successfully.
+    needs: snyk_exclusions
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      # Using Snyk provided action for dotnet projects.
+      - name: Run Snyk test
+        uses: snyk/actions/dotnet@master
+        # Continue on error needs to be set to true to upload the results at the end.
+        continue-on-error: true 
+        env:
+          # Uses SNYK_TOKEN from org secrets
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
+
+      # Use GitHub code scanning action to upload Snyk results to repo Security tab.
+      - name: Upload Snyk result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
