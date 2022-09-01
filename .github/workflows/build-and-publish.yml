@@ -76,9 +76,9 @@ jobs:
           name: workspace
           path: ./
 
-  # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
-  build_and_test:
-    name: Build and test projects
+  # build job builds for each of the target frameworks of the solution.
+  build:
+    name: Build projects
     # This job will not run until check_diff is complete and passes.
     needs: check_diff
     # Using the latest Windows GitHub-hosted runner.
@@ -100,11 +100,6 @@ jobs:
       # Using dotnet build to build the solution using a target framework specified in the matrix.
       - name: Build ${{ matrix.target_framework }}
         run: dotnet build --configuration Release --framework ${{ matrix.target_framework }}
-      
-      # Using dotnet test to run any unit tests found in the solution using a target framework specified in the matrix.
-      # If any test fails, the job and workflow will fail.
-      - name: Test ${{ matrix.target_framework }}
-        run: dotnet test --configuration Release --no-build --verbosity normal --framework ${{ matrix.target_framework }}
 
       # Using GitHub upload-artifact action to persist the workspace for the next job.
       - name: Upload workspace
@@ -112,17 +107,21 @@ jobs:
         with:
           name: workspace
           path: ./
-  
-  # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
-  code_analysis:
-    name: Run code analysis
-    # This job will not run until build_and_test is complete and passes.
-    needs: build_and_test
+
+  # Calls snyk-exclusion reusable workflow.
+  snyk_exclusions:
+    name: Snyk exclusions
+    # This job will not run until build is complete and passes.
+    needs: build
+    uses: ./.github/workflows/snyk-exclusions.yml
+
+  # snyk_monitor job reports project to Snyk UI for vulnerability monitoring.
+  snyk_monitor:
+    name: Snyk monitor
+    # This job will not run until snyk_exclusions and build are complete and pass.
+    needs: snyk_exclusions
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
-    # Creates output variables to be used in steps or other jobs.
-    outputs: 
-      scan_exclusions: ${{ steps.scan-exclusions.outputs.scan_exclusions }}
     
     steps:
       # Using GitHub download-artifact action to get the workspace from the last job.
@@ -131,37 +130,6 @@ jobs:
         with:
           name: workspace
 
-      # Creates a comma separated list of directories or files to exclude from code scans.
-      - name: Find test or example project(s)
-        id: scan-exclusions
-        shell: pwsh
-        run: |
-          # Filter to only Test and Example projects and add them to scanExclusions.
-          $scanExclusions = Get-ChildItem -Directory | Select-Object Name
-          $scanExclusions = $scanExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
-          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
-          echo "scan exclusions - $scanExclusions"
-          
-          # Set output.
-          echo "::set-output name=scan_exclusions::$scanExclusions"
-
-      # Using Snyk provided action for Snyk test for dotnet projects.
-      - name: Run Snyk test
-        uses: snyk/actions/dotnet@master
-        # Continue on error needs to be set to true to upload the results at the end.
-        continue-on-error: true 
-        env:
-          # Uses SNYK_TOKEN from org secrets
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
-
-      # Use GitHub code scanning action to upload Snyk results to repo Security tab.
-      - name: Upload Snyk result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: snyk.sarif
-      
       # Using Snyk provided action for Snyk monitor command.
       - name: Run Snyk monitor
         uses: snyk/actions/node@master
@@ -170,13 +138,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: monitor
-          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }}
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.scan_exclusions }}
 
   # pack_and_publish job packs the individual project(s) and publishes it to NuGet.org.
   pack_and_publish:
     name: Pack and publish
-    # This job will not run until check_diff and build_and_test are complete and pass.
-    needs: [ check_diff, code_analysis ]
+    # This job will not run until check_diff and build are complete and pass.
+    needs: [ check_diff, build ]
     # Using the latest Windows GitHub-hosted runner.
     runs-on: windows-latest
     # Using approved projects from the matrix, the Release environment is called for those projects.

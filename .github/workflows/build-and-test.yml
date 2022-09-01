@@ -13,6 +13,7 @@ on:
 ##  WORKFLOW JOBS
 ####################################################################################################
 jobs:
+  # build_and_test job builds and runs unit tests for each of the target frameworks of the solution.
   build_and_test:
     name: Build and test projects
     # Using the latest Windows GitHub-hosted runner.
@@ -44,16 +45,20 @@ jobs:
           name: workspace
           path: ./
 
-  # code_analysis job runs code analysis scans against the codebase looking for vulnerabilities.
-  code_analysis:
-    name: Run code analysis
+  # Calls snyk-exclusion reusable workflow.
+  snyk_exclusions:
+    name: Snyk exclusions
     # This job will not run until build_and_test is complete and passes.
     needs: build_and_test
+    uses: ./.github/workflows/snyk-exclusions.yml
+
+  # snyk_test job runs scan against project dependencies, looking for vulnerabilities.
+  snyk_test:
+    name: Snyk test
+    # This job will not run until build_and_test job finishes successfully.
+    needs: snyk_exclusions
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
-    # Creates output variables to be used in steps or other jobs.
-    outputs: 
-      scan_exclusions: ${{ steps.scan-exclusions.outputs.scan_exclusions }}
     
     steps:
       # Using GitHub download-artifact action to get the workspace from the last job.
@@ -61,20 +66,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: workspace
-
-      # Creates a comma separated list of directories or files to exclude from code scans.
-      - name: Find test or example project(s)
-        id: scan-exclusions
-        shell: pwsh
-        run: |
-          # Filter to only Test and Example projects and add them to scanExclusions.
-          $scanExclusions = Get-ChildItem -Directory | Select-Object Name
-          $scanExclusions = $scanExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
-          $scanExclusions = $scanExclusions | ConvertTo-CSV -Delimiter ',' -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
-          echo "scan exclusions - $scanExclusions"
-
-          # Set output.
-          echo "::set-output name=scan_exclusions::$scanExclusions"
 
       # Using Snyk provided action for dotnet projects.
       - name: Run Snyk test
@@ -85,7 +76,7 @@ jobs:
           # Uses SNYK_TOKEN from org secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --all-projects --exclude=${{ steps.scan-exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.scan_exclusions }} --sarif-file-output=snyk.sarif
 
       # Use GitHub code scanning action to upload Snyk results to repo Security tab.
       - name: Upload Snyk result to GitHub Code Scanning
