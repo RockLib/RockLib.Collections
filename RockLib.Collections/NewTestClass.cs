@@ -5,6 +5,6 @@ namespace RockLib.Collections
     /// </summary>
     public class NewTestClass
     {
-
+        // test this
     }
 }
