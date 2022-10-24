@@ -6,8 +6,7 @@ name: Build and Test
 on:
   # Workflow will run on any pull request to main.
   pull_request:
-    branches:
-      - main
+
 
 ####################################################################################################
 ##  WORKFLOW JOBS
