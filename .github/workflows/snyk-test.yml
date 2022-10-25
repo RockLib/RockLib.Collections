@@ -78,8 +78,8 @@ jobs:
   # snyk_test job runs scan against project dependencies, looking for vulnerabilities.
   snyk_test:
     name: Snyk test
-    # This job will not run until build_and_test job finishes successfully.
-    needs: build_and_test
+    # This job will not run until snyk_exclusions job finishes successfully.
+    needs: snyk_exclusions
     # Using the latest Ubuntu GitHub-hosted runner.
     runs-on: ubuntu-latest
 
@@ -97,4 +97,4 @@ jobs:
           # Uses SNYK_TOKEN from org secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --all-projects --exclude=${{ needs.build_and_test.outputs.SNYK_EXCLUSIONS }}
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
