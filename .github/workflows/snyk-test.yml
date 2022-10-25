@@ -1,17 +1,20 @@
-name: Build and Test
+name: Snyk Test
 
 ####################################################################################################
 ##  WORKFLOW TRIGGER
 ####################################################################################################
-on: pull_request
-  # Workflow will run on any pull request to main.
+on:
+  # Workflow will run after build_and_test is completed.
+  workflow_run:
+    workflows: [ "Build and Test" ]
+    types: [ completed ]
 
 ####################################################################################################
 ##  WORKFLOW JOBS
 ####################################################################################################
 jobs:
-  # Calls the shared build-and-test workflow.
-  call_build_and_test:
-    name: Call build-and-test workflow
-    uses: RockLib/RockLib.Workflows/.github/workflows/build-and-test.yml@forked-pr-tokens
+  # Calls the shared snyk-test workflow.
+  call_snyk_test:
+    name: Call snyk-test workflow
+    uses: RockLib/RockLib.Workflows/.github/workflows/snyk-test.yml@forked-pr-tokens
     secrets: inherit
