@@ -16,5 +16,5 @@ jobs:
   # Calls the shared snyk-test workflow.
   call_snyk_test:
     name: Call snyk-test workflow
-    uses: ./.github/workflows/snyk-test.yml@main
+    uses: ./.github/workflows/snyk-test.yml
     secrets: inherit
