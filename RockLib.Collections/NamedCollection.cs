@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using static System.StringComparer;
 
-// Change for test PR.
+// Making changes for PR.
 
 namespace RockLib.Collections
 {
