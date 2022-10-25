@@ -1,13 +1,11 @@
-name: Snyk Test
+name: Shared Snyk Test Workflow
 
 ####################################################################################################
 ##  WORKFLOW TRIGGER
 ####################################################################################################
 on:
-  # Workflow will run after build_and_test is completed.
-  workflow_run:
-    workflows: [ Build and Test ]
-    types: [ completed ]
+  # Workflow will run when called by another workflow.
+  workflow_call:
 
 ####################################################################################################
 ##  WORKFLOW JOBS
@@ -32,7 +30,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            var artifacts = await github.actions.listWorkflowRunArtifacts({
+            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
                run_id: ${{github.event.workflow_run.id }},
@@ -40,7 +38,7 @@ jobs:
             var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
               return artifact.name == "workspace"
             })[0];
-            var download = await github.actions.downloadArtifact({
+            var download = await github.rest.actions.downloadArtifact({
                owner: context.repo.owner,
                repo: context.repo.repo,
                artifact_id: matchArtifact.id,
