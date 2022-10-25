@@ -101,8 +101,6 @@ jobs:
     name: Report Snyk test results
     needs: snyk_test
     runs-on: ubuntu-latest
-    if: >
-        needs.snyk_test.conclusion == 'failure'
 
     steps:
       - name: Snyk test result
