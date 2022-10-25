@@ -16,5 +16,5 @@ jobs:
   # Calls the shared build-and-test workflow.
   call_build_and_test:
     name: Call build-and-test workflow
-    uses: .github/workflows/build-and-test.yml
+    uses: .github/workflows/build-and-test.yml@main
     secrets: inherit
