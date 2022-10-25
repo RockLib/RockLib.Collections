@@ -96,3 +96,32 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
+
+  report_snyk_test_results:
+    name: Report Snyk test results
+    needs: snyk_test
+    runs-on: ubuntu-latest
+    if: >
+        needs.snyk_test.conclusion == 'failure'
+
+    steps:
+      - name: Snyk test result
+        uses: actions/github-script@v6
+        with:
+          script: |
+            var testResult = needs.snyk_test.conclusion;
+            var reportComment = "";
+            var reportUrl = ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }};
+            switch(testResult) {
+              case 'success':
+                reportComment = "Snyk test reported no dependency vulnerabilities.";
+                break;
+              case 'failure':
+                reportComment = "Snyk test reported no dependency vulnerabilities.";
+                break;
+              default:
+                reportComment = "Snyk test ran into an issue and was unable to complete.";
+            }
+            console.log("Snyk result: " + testResult);
+            console.log("Report comment: " + reportComment);
+            console.log("Report url: " + reportUrl);
