@@ -13,8 +13,88 @@ on:
 ##  WORKFLOW JOBS
 ####################################################################################################
 jobs:
-  # Calls the shared snyk-test workflow.
-  call_snyk_test:
-    name: Call snyk-test workflow
-    uses: RockLib/RockLib.Workflows/.github/workflows/snyk-test.yml@forked-pr-tokens
-    secrets: inherit
+  # snyk_exclusions fetches the code and finds test or example projects to exclude from Snyk scans.
+  snyk_exclusions:
+    name: Run Snyk exclusions
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    # Creates output variables to be used in steps or other jobs.
+    outputs: 
+      SNYK_EXCLUSIONS: ${{ steps.snyk-exclusions.outputs.SNYK_EXCLUSIONS }}
+    # Only runs if the calling was triggered by a pull_request and completed successfully. 
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
+      - name: Download artifact
+        uses: actions/github-script@v6
+        with:
+          script: |
+            var artifacts = await github.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{github.event.workflow_run.id }},
+            });
+            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "workspace"
+            })[0];
+            var download = await github.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            var fs = require('fs');
+            fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
+
+      # Unzips the downloaded workspace.
+      - name: Unzip workspace
+        run: unzip workspace.zip
+
+      # Creates a comma separated list of directories or files to exclude from code scans.
+      - name: Find test or example project(s) to exclude
+        id: snyk-exclusions
+        shell: pwsh
+        run: |
+          # Filter to only Test and Example projects and add them to snykExclusions.
+          $snykExclusions = Get-ChildItem -Directory | Select-Object Name
+          $snykExclusions = $snykExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
+          $snykExclusions = $snykExclusions | ConvertTo-CSV -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
+          $snykExclusions = $snykExclusions -join ','
+          echo "snyk exclusions - $snykExclusions"
+
+          # Set output.
+          echo "SNYK_EXCLUSIONS=$snykExclusions" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
+
+  # snyk_test job runs scan against project dependencies, looking for vulnerabilities.
+  snyk_test:
+    name: Snyk test
+    # This job will not run until build_and_test job finishes successfully.
+    needs: build_and_test
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      # Using Snyk provided action for dotnet projects.
+      - name: Run Snyk test
+        uses: snyk/actions/dotnet@master
+        env:
+          # Uses SNYK_TOKEN from org secrets
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --exclude=${{ needs.build_and_test.outputs.SNYK_EXCLUSIONS }}

@@ -10,8 +10,29 @@ on: pull_request
 ##  WORKFLOW JOBS
 ####################################################################################################
 jobs:
-  # Calls the shared build-and-test workflow.
-  call_build_and_test:
-    name: Call build-and-test workflow
-    uses: RockLib/RockLib.Workflows/.github/workflows/build-and-test.yml@forked-pr-tokens
-    secrets: inherit
+  # build_and_test job builds and runs unit tests, and searches for exclusions from Snyk scans.
+  build_and_test:
+    name: Build and test projects
+    # Using the latest Windows GitHub-hosted runner.
+    runs-on: windows-latest
+
+    steps:
+      # Using Github checkout action to retrieve the codebase.
+      - name: Fetch code
+        uses: actions/checkout@v3
+
+      # Using dotnet build to build the solution.
+      - name: Build
+        run: dotnet build --configuration Release
+
+      # Using dotnet test to run any unit tests found in the project.
+      # If any test fails, the job and workflow will fail.
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
