@@ -1,11 +1,13 @@
-name: Shared Snyk Test Workflow
+name: Snyk Test
 
 ####################################################################################################
 ##  WORKFLOW TRIGGER
 ####################################################################################################
 on:
-  # Workflow will run when called by another workflow.
-  workflow_call:
+  # Workflow will run after build_and_test is completed.
+  workflow_run:
+    workflows: [ Build and Test ]
+    types: [ completed ]
 
 ####################################################################################################
 ##  WORKFLOW JOBS
