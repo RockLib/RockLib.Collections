@@ -19,10 +19,10 @@ jobs:
     # Creates output variables to be used in steps or other jobs.
     outputs: 
       SNYK_EXCLUSIONS: ${{ steps.snyk-exclusions.outputs.SNYK_EXCLUSIONS }}
-    # Only runs if the calling was triggered by a pull_request and completed successfully. 
-    if: >
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success'
+    # # Only runs if the calling was triggered by a pull_request and completed successfully. 
+    # if: >
+    #   github.event.workflow_run.event == 'pull_request' &&
+    #   github.event.workflow_run.conclusion == 'success'
 
     steps:
       # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
