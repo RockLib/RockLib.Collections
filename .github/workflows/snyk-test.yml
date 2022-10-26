@@ -120,14 +120,14 @@ jobs:
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + snykTestUrl);
 
-            await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: 3,
               body: "this is a test"
             });
 
-            await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: 3,
