@@ -4,8 +4,8 @@ name: Shared Build and Test
 ##  WORKFLOW TRIGGER
 ####################################################################################################
 on:
+  # Workflow will run when called by another workflow.
   workflow_call:
-  # Workflow will run on any pull request to main.
 
 ####################################################################################################
 ##  WORKFLOW JOBS
@@ -28,8 +28,8 @@ jobs:
 
       # Using dotnet test to run any unit tests found in the project.
       # If any test fails, the job and workflow will fail.
-      # - name: Test
-      #   run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
 
       # Using GitHub upload-artifact action to persist the workspace for the next job.
       - name: Upload workspace
