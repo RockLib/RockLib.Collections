@@ -97,29 +97,28 @@ jobs:
         with:
           args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
 
-  report_snyk_test_results:
-    name: Report Snyk test results
-    needs: snyk_test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Snyk test result
+      - name: Report Snyk test results
         uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to ensure this step always runs.
+        if: ${{ always() }}
         with:
           script: |
-            var testResult = needs.snyk_test.conclusion;
             var reportComment = "";
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-            switch(testResult) {
-              case 'success':
-                reportComment = "Snyk test reported no dependency vulnerabilities.";
-                break;
-              case 'failure':
-                reportComment = "Snyk test reported no dependency vulnerabilities.";
-                break;
-              default:
-                reportComment = "Snyk test ran into an issue and was unable to complete.";
+
+            # Uses GitHub Actions status check function to check if the snyk-test step failed.
+            if (${{ failure() }} && steps.snyk-test.conclusion == 'failure') {
+              reportComment = "Snyk test found dependency vulnerabilities.";
             }
+            # Uses GitHub Actions status check function to check that previous steps completed successfully.
+            else if(${{ success() }}) {
+              reportComment = "Snyk test found no dependency vulnerabilities.";
+            }
+            # Anything other than success or failure (e.g. error, canceled)
+            else {
+              reportComment = "Snyk test ran into an issue and was unable to complete.";
+            }
+
             console.log("Snyk result: " + testResult);
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + reportUrl);
@@ -128,3 +127,4 @@ jobs:
               repo: context.repo.repo,
               pull_number: 3
             });
+            console.log("Issue number for commenting: " + issueNumber);
