@@ -47,9 +47,6 @@ jobs:
             const fs = require('fs');
             fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
 
-            console.log("artifact properties");
-            console.log(matchArtifact);
-
             const workflowRun = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -58,6 +55,7 @@ jobs:
 
             console.log("workflow properties");
             console.log(workflowRun);
+            console.log(workflowRun.data.pull_requests);
 
       # Unzips the downloaded workspace.
       - name: Unzip workspace
