@@ -1,4 +1,4 @@
-name: Snyk Test
+name: Run Snyk Test
 
 ####################################################################################################
 ##  WORKFLOW TRIGGER
@@ -6,7 +6,7 @@ name: Snyk Test
 on:
   # Workflow will run after build_and_test is completed.
   workflow_run:
-    workflows: [ Build and Test ]
+    workflows: [ Run Unit Test ]
     types: [ completed ]
 
 ####################################################################################################
