@@ -97,37 +97,68 @@ jobs:
         with:
           args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
 
-      - name: Report Snyk test results
+      - name: Report Snyk test success
         uses: actions/github-script@v6
-        # Uses GitHub Actions status check function to ensure this step always runs.
-        if: ${{ always() }}
-        env:
-          SNYK_TEST_SUCCESS: ${{ success() }}
-          SNYK_TEST_FAILURE: ${{ failure() }} && ${{ steps.snyk-test.conclusion }} == 'failure'
+        # Uses GitHub Actions status check function to check that previous steps completed successfully.
+        if: ${{ success() }}
         with:
           script: |
-            var reportComment = "";
+            # URL to Snyk test results.
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            # Result of the Snyk test.
+            var reportComment = "Snyk test found no dependency vulnerabilities.";
 
-            # Uses GitHub Actions status check function to check that previous steps completed successfully.
-            if($SNYK_TEST_SUCCESS) {
-              reportComment = "Snyk test found no dependency vulnerabilities.";
-            }
-            # Uses GitHub Actions status check function to check if the snyk-test step failed.
-            else if ($SNYK_TEST_FAILURE) {
-              reportComment = "Snyk test found dependency vulnerabilities.";
-            }
-            # Anything other than success or failure (e.g. error, canceled)
-            else {
-              reportComment = "Snyk test ran into an issue and was unable to complete.";
-            }
-
-            console.log("Snyk result: " + testResult);
-            console.log("Report comment: " + reportComment);
-            console.log("Report url: " + reportUrl);
+            # Get issue number for leaving comment on pull request.
             var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: 3
             });
+
+            console.log("Report comment: " + reportComment);
+            console.log("Report url: " + reportUrl);
+            console.log("Issue number for commenting: " + issueNumber);
+
+      - name: Report Snyk test failure
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if the snyk-test step failed.
+        if: ${{ failure() && steps.snyk-test.conclusion == 'failure' }}
+        with:
+          script: |
+            # URL to Snyk test results.
+            var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            # Result of the Snyk test.
+            var reportComment = "Snyk test found dependency vulnerabilities.";
+
+            # Get issue number for leaving comment on pull request.
+            var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: 3
+            });
+
+            console.log("Report comment: " + reportComment);
+            console.log("Report url: " + reportUrl);
+            console.log("Issue number for commenting: " + issueNumber);
+
+      - name: Report Snyk test error
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if there was an error.
+        if: ${{ failure() && steps.snyk-test.conclusion != 'failure' }}
+        with:
+          script: |
+            # URL to Snyk test results.
+            var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            # Result of the Snyk test.
+            var reportComment = "Snyk test experienced an error.";
+
+            # Get issue number for leaving comment on pull request.
+            var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: 3
+            });
+
+            console.log("Report comment: " + reportComment);
+            console.log("Report url: " + reportUrl);
             console.log("Issue number for commenting: " + issueNumber);
