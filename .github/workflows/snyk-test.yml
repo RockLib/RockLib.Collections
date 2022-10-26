@@ -124,7 +124,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: 3,
-              body: reportComment + snykTestUrl;
+              body: "this is a test";
             });
 
       - name: Report Snyk test failure
