@@ -128,10 +128,6 @@ jobs:
             // });
 
             console.log("Hopefully a PR number... looking for 3");
-            console.log("event.number");
-            console.log(${{github.event.number}});
-            console.log(github.event.number);
-
             console.log("event.issue.number");
             console.log(${{github.event.issue.number}});
             console.log(github.event.issue.number);
