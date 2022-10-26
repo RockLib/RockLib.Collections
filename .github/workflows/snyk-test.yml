@@ -103,12 +103,12 @@ jobs:
         if: ${{ success() }}
         with:
           script: |
-            # URL to Snyk test results.
+            // URL to Snyk test results.
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-            # Result of the Snyk test.
+            // Result of the Snyk test.
             var reportComment = "Snyk test found no dependency vulnerabilities.";
 
-            # Get issue number for leaving comment on pull request.
+            // Get issue number for leaving comment on pull request.
             var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -125,12 +125,12 @@ jobs:
         if: ${{ failure() && steps.snyk-test.conclusion == 'failure' }}
         with:
           script: |
-            # URL to Snyk test results.
+            // URL to Snyk test results.
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-            # Result of the Snyk test.
+            // Result of the Snyk test.
             var reportComment = "Snyk test found dependency vulnerabilities.";
 
-            # Get issue number for leaving comment on pull request.
+            // Get issue number for leaving comment on pull request.
             var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -147,12 +147,12 @@ jobs:
         if: ${{ failure() && steps.snyk-test.conclusion != 'failure' }}
         with:
           script: |
-            # URL to Snyk test results.
+            // URL to Snyk test results.
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-            # Result of the Snyk test.
+            // Result of the Snyk test.
             var reportComment = "Snyk test experienced an error.";
 
-            # Get issue number for leaving comment on pull request.
+            // Get issue number for leaving comment on pull request.
             var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
