@@ -88,20 +88,9 @@ jobs:
         with:
           name: workspace
 
-      - name: Get snyk_test job id 
-        uses: actions/github-script@v6
-        with:
-          script: |
-            var workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: ${{ github.run_id }}
-            });
-
-            console.log(workflowJobs);
-
       # Using Snyk provided action for dotnet projects.
       - name: Run Snyk test
+        id: snyk-test
         uses: snyk/actions/dotnet@master
         env:
           # Uses SNYK_TOKEN from org secrets
@@ -114,29 +103,28 @@ jobs:
         # Uses GitHub Actions status check function to check that previous steps completed successfully.
         if: ${{ success() }}
         with:
-         script: |
+          script: |
             // URL to Snyk test results.
-            var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
-            // Result of the Snyk test.
-            var reportComment = "Snyk test found no dependency vulnerabilities.\nView the test details at: " + reportURL;
-
-            // Get issue number for leaving comment on pull request.
-            var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: 3
+              run_id: ${{ github.run_id }}
             });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+
+            // Result of the Snyk test.
+            var reportComment = "Snyk test found no dependency vulnerabilities.\nView the test details at: ";
 
             // Output 
             console.log("Report comment: " + reportComment);
-            console.log("Report url: " + reportUrl);
-            console.log("Issue number for commenting: ", issueNumber);
+            console.log("Report url: " + snykTestUrl);
 
             await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: 3,
-              body: reportComment
+              body: reportComment + snykTestUrl;
             });
 
       - name: Report Snyk test failure
