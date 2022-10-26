@@ -102,11 +102,11 @@ jobs:
         # Uses GitHub Actions status check function to check that previous steps completed successfully.
         if: ${{ success() }}
         with:
-          script: |
+         script: |
             // URL to Snyk test results.
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
             // Result of the Snyk test.
-            var reportComment = "Snyk test found no dependency vulnerabilities.";
+            var reportComment = "Snyk test found no dependency vulnerabilities.\nView the test details at: " + reportURL;
 
             // Get issue number for leaving comment on pull request.
             var issueNumber = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
@@ -115,10 +115,17 @@ jobs:
               pull_number: 3
             });
 
+            // Output 
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + reportUrl);
             console.log("Issue number for commenting: ", issueNumber);
-            console.log(issueNumber);
+
+            await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body: reportComment
+            });
 
       - name: Report Snyk test failure
         uses: actions/github-script@v6
