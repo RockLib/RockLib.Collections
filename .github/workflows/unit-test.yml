@@ -1,4 +1,4 @@
-name: Shared Build and Test
+name: Shared Unit Test
 
 ####################################################################################################
 ##  WORKFLOW TRIGGER
