@@ -101,18 +101,21 @@ jobs:
         uses: actions/github-script@v6
         # Uses GitHub Actions status check function to ensure this step always runs.
         if: ${{ always() }}
+        env:
+          SNYK_TEST_SUCCESS: ${{ success() }}
+          SNYK_TEST_FAILURE: ${{ failure() }} && ${{ steps.snyk-test.conclusion }} == 'failure'
         with:
           script: |
             var reportComment = "";
             var reportUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
 
-            # Uses GitHub Actions status check function to check if the snyk-test step failed.
-            if (${{ failure() }} && steps.snyk-test.conclusion == 'failure') {
-              reportComment = "Snyk test found dependency vulnerabilities.";
-            }
             # Uses GitHub Actions status check function to check that previous steps completed successfully.
-            else if(${{ success() }}) {
+            if($SNYK_TEST_SUCCESS) {
               reportComment = "Snyk test found no dependency vulnerabilities.";
+            }
+            # Uses GitHub Actions status check function to check if the snyk-test step failed.
+            else if ($SNYK_TEST_FAILURE) {
+              reportComment = "Snyk test found dependency vulnerabilities.";
             }
             # Anything other than success or failure (e.g. error, canceled)
             else {
