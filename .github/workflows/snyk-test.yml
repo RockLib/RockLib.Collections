@@ -19,6 +19,7 @@ jobs:
     # Creates output variables to be used in steps or other jobs.
     outputs: 
       SNYK_EXCLUSIONS: ${{ steps.snyk-exclusions.outputs.SNYK_EXCLUSIONS }}
+      PR_NUMBER: ${{ steps.download-artifact.outputs.result }}
     # # Only runs if the calling was triggered by a pull_request and completed successfully. 
     # if: >
     #   github.event.workflow_run.event == 'pull_request' &&
@@ -27,35 +28,43 @@ jobs:
     steps:
       # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
       - name: Download artifact
+        id: download-artifact
         uses: actions/github-script@v6
         with:
           script: |
+            // Get list of artifacts from calling workflow.
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
               repo: context.repo.repo,
               run_id: ${{github.event.workflow_run.id }},
             });
+            // Find the needed artifact.
             const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
               return artifact.name == "workspace"
             })[0];
+            // Download the artifact.
             const download = await github.rest.actions.downloadArtifact({
               owner: context.repo.owner,
               repo: context.repo.repo,
               artifact_id: matchArtifact.id,
               archive_format: 'zip',
             });
+            // Save the artifact to the workflow workspace.
             const fs = require('fs');
             fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
 
+            // Get the properties from the calling workflow to get the pull request number.
             const workflowRun = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
               owner: context.repo.owner,
               repo: context.repo.repo,
               run_id: ${{github.event.workflow_run.id }},
             });
 
-            console.log("workflow properties");
-            console.log(workflowRun);
-            console.log(workflowRun.data.pull_requests);
+            // Set and return pr number.
+            const prNumber = workflowRun.data.pull_requests[0].number;
+            console.log("PR Number: " + prNumber);
+            return prNumber;
+          result-encoding: string
 
       # Unzips the downloaded workspace.
       - name: Unzip workspace
@@ -112,6 +121,7 @@ jobs:
         uses: actions/github-script@v6
         # Uses GitHub Actions status check function to check that previous steps completed successfully.
         if: ${{ success() }}
+
         with:
           script: |
             // URL to Snyk test results.
@@ -133,14 +143,12 @@ jobs:
             // await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
             //   owner: context.repo.owner,
             //   repo: context.repo.repo,
-            //   issue_number: 3,
+            //   issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
             //   body: reportComment + snykTestUrl,
             // });
 
             console.log("Hopefully a PR number... looking for 3");
-            console.log("event.issue.number");
-            console.log(${{github.event.issue.number}});
-            console.log(github.event.issue.number);
+            console.log(${{ needs.snyk_exclusions.outputs.PR_NUMBER }});
 
       # - name: Report Snyk test failure
       #   uses: actions/github-script@v6
