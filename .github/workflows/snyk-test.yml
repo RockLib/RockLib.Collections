@@ -117,7 +117,8 @@ jobs:
 
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + reportUrl);
-            console.log("Issue number for commenting: " + issueNumber);
+            console.log("Issue number for commenting: ", issueNumber);
+            console.log(issueNumber);
 
       - name: Report Snyk test failure
         uses: actions/github-script@v6
@@ -139,7 +140,8 @@ jobs:
 
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + reportUrl);
-            console.log("Issue number for commenting: " + issueNumber);
+            console.log("Issue number for commenting: ", issueNumber);
+            console.log(issueNumber);
 
       - name: Report Snyk test error
         uses: actions/github-script@v6
@@ -161,4 +163,5 @@ jobs:
 
             console.log("Report comment: " + reportComment);
             console.log("Report url: " + reportUrl);
-            console.log("Issue number for commenting: " + issueNumber);
+            console.log("Issue number for commenting: ", issueNumber);
+            console.log(issueNumber);
