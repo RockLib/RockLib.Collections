@@ -130,8 +130,19 @@ jobs:
             console.log("Hopefully a PR number... looking for 3");
             console.log("event.number");
             console.log(${{github.event.number}});
+            console.log(github.event.number);
+
             console.log("event.issue.number");
             console.log(${{github.event.issue.number}});
+            console.log(github.event.issue.number);
+
+            console.log("github ref");
+            console.log(process.env.GITHUB_REF);
+            console.log(${{ GITHUB_REF }});
+
+            console.log("github event path");
+            console.log(${{ $GITHUB_EVENT_PATH }});
+
 
       # - name: Report Snyk test failure
       #   uses: actions/github-script@v6
