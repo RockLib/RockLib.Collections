@@ -20,10 +20,10 @@ jobs:
     outputs: 
       SNYK_EXCLUSIONS: ${{ steps.snyk-exclusions.outputs.SNYK_EXCLUSIONS }}
       PR_NUMBER: ${{ steps.download-artifact.outputs.result }}
-    # # Only runs if the calling was triggered by a pull_request and completed successfully. 
-    # if: >
-    #   github.event.workflow_run.event == 'pull_request' &&
-    #   github.event.workflow_run.conclusion == 'success'
+    # Only runs if the calling was triggered by a pull_request and completed successfully. 
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
@@ -117,11 +117,11 @@ jobs:
         with:
           args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
 
+      # Determines if Snyk test succeeded and writes a comment to the pull request.
       - name: Report Snyk test success
         uses: actions/github-script@v6
         # Uses GitHub Actions status check function to check that previous steps completed successfully.
         if: ${{ success() }}
-
         with:
           script: |
             // URL to Snyk test results.
@@ -140,70 +140,69 @@ jobs:
             console.log("Report comment: " + reportComment + snykTestUrl);
 
             // Create a comment with Snyk test result with a link to the job results.
-            // await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-            //   owner: context.repo.owner,
-            //   repo: context.repo.repo,
-            //   issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
-            //   body: reportComment + snykTestUrl,
-            // });
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
 
-            console.log("Hopefully a PR number... looking for 3");
-            console.log(${{ needs.snyk_exclusions.outputs.PR_NUMBER }});
+      # Determines if Snyk test failed and writes a comment to the pull request.
+      - name: Report Snyk test failure
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if the snyk-test step failed.
+        if: ${{ failure() && steps.snyk-test.conclusion == 'failure' }}
+        with:
+          script: |
+            // URL to Snyk test results.
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.run_id }},
+            });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
 
-      # - name: Report Snyk test failure
-      #   uses: actions/github-script@v6
-      #   # Uses GitHub Actions status check function to check if the snyk-test step failed.
-      #   if: ${{ failure() && steps.snyk-test.conclusion == 'failure' }}
-      #   with:
-      #     script: |
-      #       // URL to Snyk test results.
-      #       const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         run_id: ${{ github.run_id }},
-      #       });
-      #       const jobName = "Call snyk-test workflow / Snyk test";
-      #       const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+            // Result of the Snyk test.
+            const reportComment = ":x: Snyk test found dependency vulnerabilities.\n\nView the details at: ";
 
-      #       // Result of the Snyk test.
-      #       const reportComment = ":x: Snyk test found dependency vulnerabilities.\n\nView the details at: ";
+            // Output to console.
+            console.log("Report comment: " + reportComment + snykTestUrl);
 
-      #       // Output to console.
-      #       console.log("Report comment: " + reportComment + snykTestUrl);
+            // Create a comment with Snyk test result with a link to the job results.
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
 
-      #       // Create a comment with Snyk test result with a link to the job results.
-      #       await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         issue_number: 3,
-      #         body: reportComment + snykTestUrl,
-      #       });
+      # Determines if there was an error during Snyk test and writes a comment to the pull request.
+      - name: Report Snyk test error
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if there was an error.
+        if: ${{ failure() && steps.snyk-test.conclusion != 'failure' }}
+        with:
+          script: |
+            // URL to Snyk test results.
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.run_id }},
+            });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
 
-      # - name: Report Snyk test error
-      #   uses: actions/github-script@v6
-      #   # Uses GitHub Actions status check function to check if there was an error.
-      #   if: ${{ failure() && steps.snyk-test.conclusion != 'failure' }}
-      #   with:
-      #     script: |
-      #       // URL to Snyk test results.
-      #       const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         run_id: ${{ github.run_id }},
-      #       });
-      #       const jobName = "Call snyk-test workflow / Snyk test";
-      #       const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+            // Result of the Snyk test.
+            const reportComment = ":heavy_exclamation_mark: Snyk test experienced an error.\n\nView the details at: ";
 
-      #       // Result of the Snyk test.
-      #       const reportComment = ":heavy_exclamation_mark: Snyk test experienced an error.\n\nView the details at: ";
+            // Output to console.
+            console.log("Report comment: " + reportComment + snykTestUrl);
 
-      #       // Output to console.
-      #       console.log("Report comment: " + reportComment + snykTestUrl);
-
-      #       // Create a comment with Snyk test result with a link to the job results.
-      #       await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         issue_number: 3,
-      #         body: reportComment + snykTestUrl,
-      #       });
+            // Create a comment with Snyk test result with a link to the job results.
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
