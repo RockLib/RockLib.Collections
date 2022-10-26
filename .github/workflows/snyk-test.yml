@@ -136,13 +136,6 @@ jobs:
             console.log(${{github.event.issue.number}});
             console.log(github.event.issue.number);
 
-            console.log("github ref");
-            console.log(process.env.GITHUB_REF);
-            console.log(${{ GITHUB_REF }});
-
-            console.log("github event path");
-            console.log(${{ $GITHUB_EVENT_PATH }});
-
       # - name: Report Snyk test failure
       #   uses: actions/github-script@v6
       #   # Uses GitHub Actions status check function to check if the snyk-test step failed.
