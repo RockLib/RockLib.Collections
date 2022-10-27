@@ -22,24 +22,16 @@ jobs:
       PR_NUMBER: ${{ steps.download-artifact.outputs.result }}
 
     steps:
-      # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
+      # Downloads the artifact created from the unit-test workflow containing the workspace from that workflow.
       - name: Download artifact
         id: download-artifact
         uses: actions/github-script@v6
         with:
           script: |
-            // Get list of workflows from calling repo.
-            const workflows = await github.request('GET /repos/{owner}/{repo}/actions/runs', {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            // Find the needed workflow.
-            const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
-            console.log('Build and test workflow: ' + matchedWorkflowId);
-
             const delay = async (ms = 5000) => new Promise(resolve => setTimeout(resolve, ms));
 
             async function checkWorkflowStatus(secondsDelayed) {
+              var workflow;
               do {
                 workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
                   owner: context.repo.owner,
@@ -49,7 +41,7 @@ jobs:
                 console.log('...');
 
                 await delay(secondsDelayed * 1000);
-              } while(workflow.data.status != 'completed');
+              } while(workflow.data.status == 'queued' || workflow.data.status == 'in_progress');
 
               if(workflow.conclusion == 'success') {
                 // Get list of artifacts from calling workflow.
@@ -70,16 +62,27 @@ jobs:
                 // Save the artifact to the workflow workspace.
                 const fs = require('fs');
                 fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
-              }
 
-              // Set and return pr number.
-              const prNumber = workflow.pull_requests[0].number;
-              console.log('PR Number: ' + prNumber);
+                // Set and return pr number.
+                const prNumber = workflow.pull_requests[0].number;
+                console.log('PR Number: ' + prNumber);
+              } else {
+                core.setFailed('Unable to get workflow status to download artifact.');
+              }
 
               return prNumber;
             }
 
-            console.log('waiting for unit test to complete...');
+            // Get list of workflows from calling repo.
+            const workflows = await github.request('GET /repos/{owner}/{repo}/actions/runs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            // Find the needed workflow.
+            const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
+            console.log('Build and test workflow: ' + matchedWorkflowId);
+
+            console.log('Waiting for unit test to complete...');
             checkWorkflowStatus(30);
           result-encoding: string
 
