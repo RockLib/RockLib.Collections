@@ -33,8 +33,9 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
+            console.log(workflows)
             // Find the needed workflow.
-            
+
             return "prNumber";
           result-encoding: string
 
