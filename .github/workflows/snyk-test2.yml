@@ -40,9 +40,13 @@ jobs:
                   run_id: matchedWorkflowId,
                 });
                 console.log('...');
+                console.log(workflow.data.status);
 
                 await delay(secondsDelayed * 1000);
               } while(workflow.data.status == 'queued' || workflow.data.status == 'in_progress');
+
+              console.log("!!!!! OUTSIDE LOOP !!!!!")
+              console.log(workflow);
 
               if(workflow.data.conclusion == 'success') {
                 // Get list of artifacts from calling workflow.
