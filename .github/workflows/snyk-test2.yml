@@ -34,53 +34,8 @@ jobs:
               repo: context.repo.repo,
             });
             // Find the needed workflow.
-            const matchWorkflow = workflows.data.workflow_runs.filter((workflow) => {
-              return workflow.name == "Run Unit Test"
-            })[0];
-            console.log(workflows);
-            console.log();
-            console.log(matchWorkflow);
-
-            // Loop until unit testing is complete.
-            console.log("waiting for unit test to complete...");
-            do {
-              const workflow = await github.rest.actions.getWorkflowRun({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: matchWorkflow.id,
-              });
-              setTimeout(() => {
-                console.log("...");
-              }, 10000)
-            } while(workflow.status != 'completed')
-
-            if(workflow.conclusion == 'success') {
-              // Get list of artifacts from calling workflow.
-              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: matchWorkflow.id,
-              });
-              // Find the needed artifact.
-              const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
-                return artifact.name == "workspace"
-              })[0];
-              // Download the artifact.
-              const download = await github.rest.actions.downloadArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: matchArtifact.id,
-                archive_format: 'zip',
-              });
-              // Save the artifact to the workflow workspace.
-              const fs = require('fs');
-              fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
-            }
-
-            // Set and return pr number.
-            const prNumber = workflow.pull_requests[0].number;
-            console.log("PR Number: " + prNumber);
-            return prNumber;
+            
+            return "prNumber";
           result-encoding: string
 
       # Unzips the downloaded workspace.
