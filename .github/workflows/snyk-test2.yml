@@ -34,22 +34,21 @@ jobs:
               repo: context.repo.repo,
             });
             // Find the needed workflow.
-            const matchWorkflow = workflows.data.workflow_runs.filter((workflow) => {
-              return workflow.name == "Run Unit Test"
-            })[0];
-            console.log("Build and test workflow: " + matchWorkflow.id);
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+            const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
+            console.log('Build and test workflow: ' + matchedWorkflowId);
 
             // Loop until unit testing is complete.
-            console.log("waiting for unit test to complete...");
+            console.log('waiting for unit test to complete...');
             var workflow;
             do {
               workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                run_id: matchWorkflow.id,
+                run_id: matchedWorkflowId,
               });
               setTimeout(() => {
-                console.log("...");
+                console.log('...');
               }, 60000)
             } while(workflow.data.status != 'completed')
 
@@ -58,17 +57,15 @@ jobs:
               const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                run_id: matchWorkflow.id,
+                run_id: matchedWorkflowId,
               });
               // Find the needed artifact.
-              const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
-                return artifact.name == "workspace"
-              })[0];
+              const matchedArtifactId = artifacts.data.artifacts.find(artifact => artifact.name == 'workspace').id;
               // Download the artifact.
               const download = await github.rest.actions.downloadArtifact({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                artifact_id: matchArtifact.id,
+                artifact_id: matchedArtifactId,
                 archive_format: 'zip',
               });
               // Save the artifact to the workflow workspace.
@@ -78,9 +75,9 @@ jobs:
 
             // Set and return pr number.
             const prNumber = workflow.pull_requests[0].number;
-            console.log("PR Number: " + prNumber);
+            console.log('PR Number: ' + prNumber);
 
-            return "prNumber";
+            return 'prNumber';
           result-encoding: string
 
       # Unzips the downloaded workspace.
@@ -177,14 +174,14 @@ jobs:
               repo: context.repo.repo,
               run_id: ${{ github.run_id }},
             });
-            const jobName = "Call snyk-test workflow / Snyk test";
+            const jobName = 'Call snyk-test workflow / Snyk test';
             const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
 
             // Result of the Snyk test.
-            const reportComment = ":x: Snyk test found dependency vulnerabilities.\n\nView the details at: ";
+            const reportComment = ':x: Snyk test found dependency vulnerabilities.\n\nView the details at: ';
 
             // Output to console.
-            console.log("Report comment: " + reportComment + snykTestUrl);
+            console.log('Report comment: ' + reportComment + snykTestUrl);
 
             // Create a comment with Snyk test result with a link to the job results.
             await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
@@ -207,14 +204,14 @@ jobs:
               repo: context.repo.repo,
               run_id: ${{ github.run_id }},
             });
-            const jobName = "Call snyk-test workflow / Snyk test";
+            const jobName = 'Call snyk-test workflow / Snyk test';
             const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
 
             // Result of the Snyk test.
-            const reportComment = ":heavy_exclamation_mark: Snyk test experienced an error.\n\nView the details at: ";
+            const reportComment = ':heavy_exclamation_mark: Snyk test experienced an error.\n\nView the details at: ';
 
             // Output to console.
-            console.log("Report comment: " + reportComment + snykTestUrl);
+            console.log('Report comment: ' + reportComment + snykTestUrl);
 
             // Create a comment with Snyk test result with a link to the job results.
             await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
