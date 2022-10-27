@@ -51,7 +51,7 @@ jobs:
               setTimeout(() => {
                 console.log("...");
               }, 10000)
-            } while(workflow.status != 'completed')
+            } while(workflow.data.status != 'completed')
 
             if(workflow.conclusion == 'success') {
               // Get list of artifacts from calling workflow.
