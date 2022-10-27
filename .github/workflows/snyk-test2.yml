@@ -1,0 +1,223 @@
+name: Shared Snyk Test 2
+
+####################################################################################################
+##  WORKFLOW TRIGGER
+####################################################################################################
+on:
+  # Workflow will run when called by another workflow.
+  workflow_call:
+
+####################################################################################################
+##  WORKFLOW JOBS
+####################################################################################################
+jobs:
+  # snyk_exclusions fetches the code and finds test or example projects to exclude from Snyk scans.
+  snyk_exclusions:
+    name: Run Snyk exclusions
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    # Creates output variables to be used in steps or other jobs.
+    outputs: 
+      SNYK_EXCLUSIONS: ${{ steps.snyk-exclusions.outputs.SNYK_EXCLUSIONS }}
+      PR_NUMBER: ${{ steps.download-artifact.outputs.result }}
+
+    steps:
+      # Downloads the artifact created from the build_and_test workflow containing the workspace from that workflow.
+      - name: Download artifact
+        id: download-artifact
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Get list of workflows from calling repo.
+            const workflows = await github.rest.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            // Find the needed workflow.
+            const matchWorkflow = workflows.data.workflow_runs.filter((workflow) => {
+              return workflow.name == "Run Unit Test"
+            })[0];
+            console.log(workflows);
+            console.log();
+            console.log(matchWorkflow);
+
+            // Loop until unit testing is complete.
+            do {
+              setTimeout(() => {
+                const workflow = await github.rest.actions.getWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: matchWorkflow.id,
+                });
+              }, 10000)
+            } while(workflow.status != 'completed')
+
+            if(workflow.conclusion == 'success') {
+              // Get list of artifacts from calling workflow.
+              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: matchWorkflow.id,
+              });
+              // Find the needed artifact.
+              const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+                return artifact.name == "workspace"
+              })[0];
+              // Download the artifact.
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: matchArtifact.id,
+                archive_format: 'zip',
+              });
+              // Save the artifact to the workflow workspace.
+              const fs = require('fs');
+              fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
+            }
+
+            // Set and return pr number.
+            const prNumber = workflow.pull_requests[0].number;
+            console.log("PR Number: " + prNumber);
+            return prNumber;
+          result-encoding: string
+
+      # Unzips the downloaded workspace.
+      - name: Unzip workspace
+        run: unzip workspace.zip
+
+      # Creates a comma separated list of directories or files to exclude from code scans.
+      - name: Find test or example project(s) to exclude
+        id: snyk-exclusions
+        shell: pwsh
+        run: |
+          # Filter to only Test and Example projects and add them to snykExclusions.
+          $snykExclusions = Get-ChildItem -Directory | Select-Object Name
+          $snykExclusions = $snykExclusions | Where-Object { ($_ -Match 'Tests') -or ($_ -Match 'Example') }
+          $snykExclusions = $snykExclusions | ConvertTo-CSV -UseQuotes Never -NoTypeInformation | Select-Object -Skip 1
+          $snykExclusions = $snykExclusions -join ','
+          echo "snyk exclusions - $snykExclusions"
+
+          # Set output.
+          echo "SNYK_EXCLUSIONS=$snykExclusions" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      # Using GitHub upload-artifact action to persist the workspace for the next job.
+      - name: Upload workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: workspace
+          path: ./
+
+  # snyk_test job runs scan against project dependencies, looking for vulnerabilities.
+  snyk_test:
+    name: Snyk test
+    # This job will not run until snyk_exclusions job finishes successfully.
+    needs: snyk_exclusions
+    # Using the latest Ubuntu GitHub-hosted runner.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Using GitHub download-artifact action to get the workspace from the last job.
+      - name: Download workspace
+        uses: actions/download-artifact@v3
+        with:
+          name: workspace
+
+      # Using Snyk provided action for dotnet projects.
+      - name: Run Snyk test
+        id: snyk-test
+        uses: snyk/actions/dotnet@master
+        env:
+          # Uses SNYK_TOKEN from org secrets
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --exclude=${{ needs.snyk_exclusions.outputs.SNYK_EXCLUSIONS }}
+
+      # Determines if Snyk test succeeded and writes a comment to the pull request.
+      - name: Report Snyk test success
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check that previous steps completed successfully.
+        if: ${{ success() }}
+        with:
+          script: |
+            // URL to Snyk test results.
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.run_id }},
+            });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+
+            // Result of the Snyk test.
+            const reportComment = ":white_check_mark: Snyk test found no dependency vulnerabilities.\n\nView the details at: ";
+
+            // Output to console.
+            console.log("Report comment: " + reportComment + snykTestUrl);
+
+            // Create a comment with Snyk test result with a link to the job results.
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
+
+      # Determines if Snyk test failed and writes a comment to the pull request.
+      - name: Report Snyk test failure
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if the snyk-test step failed.
+        if: ${{ failure() && steps.snyk-test.conclusion == 'failure' }}
+        with:
+          script: |
+            // URL to Snyk test results.
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.run_id }},
+            });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+
+            // Result of the Snyk test.
+            const reportComment = ":x: Snyk test found dependency vulnerabilities.\n\nView the details at: ";
+
+            // Output to console.
+            console.log("Report comment: " + reportComment + snykTestUrl);
+
+            // Create a comment with Snyk test result with a link to the job results.
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
+
+      # Determines if there was an error during Snyk test and writes a comment to the pull request.
+      - name: Report Snyk test error
+        uses: actions/github-script@v6
+        # Uses GitHub Actions status check function to check if there was an error.
+        if: ${{ failure() && steps.snyk-test.conclusion != 'failure' }}
+        with:
+          script: |
+            // URL to Snyk test results.
+            const workflowJobs = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.run_id }},
+            });
+            const jobName = "Call snyk-test workflow / Snyk test";
+            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
+
+            // Result of the Snyk test.
+            const reportComment = ":heavy_exclamation_mark: Snyk test experienced an error.\n\nView the details at: ";
+
+            // Output to console.
+            console.log("Report comment: " + reportComment + snykTestUrl);
+
+            // Create a comment with Snyk test result with a link to the job results.
+            await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.snyk_exclusions.outputs.PR_NUMBER }},
+              body: reportComment + snykTestUrl,
+            });
