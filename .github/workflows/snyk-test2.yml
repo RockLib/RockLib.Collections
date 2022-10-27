@@ -34,7 +34,6 @@ jobs:
               repo: context.repo.repo,
             });
             // Find the needed workflow.
-            const snykTestUrl = workflowJobs.data.jobs.find(job => job.name === jobName).html_url;
             const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
             console.log('Build and test workflow: ' + matchedWorkflowId);
 
