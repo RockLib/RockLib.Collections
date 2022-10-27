@@ -37,17 +37,18 @@ jobs:
             const matchWorkflow = workflows.data.workflow_runs.filter((workflow) => {
               return workflow.name == "Run Unit Test"
             })[0];
-            console.log(matchWorkflow);
+            console.log("Build and test workflow: " + matchWorkflow.id);
 
             // Loop until unit testing is complete.
             console.log("waiting for unit test to complete...");
+            var workflow;
             do {
-              const workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
+              workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 run_id: matchWorkflow.id,
               });
-              console.log(workflow);
+              console.log(workflow.data.status);
               setTimeout(() => {
                 console.log("...");
               }, 10000)
