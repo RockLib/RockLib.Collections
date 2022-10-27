@@ -48,13 +48,27 @@ jobs:
               console.log("!!!!! OUTSIDE LOOP !!!!!")
               console.log(workflow);
 
+              console.log("!!!!!  !!!!!");
+              console.log();
+
+              console.log("!!!!! WORKFLOW CONCLUSION !!!!!");
+              console.log(workflow.data.conclusion);
+
               if(workflow.data.conclusion == 'success') {
+
+                console.log("!!!!! INSIDE SUCCESS LOOP !!!!!");
+                console.log(workflow.data.conclusion);
+
                 // Get list of artifacts from calling workflow.
                 const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   run_id: matchedWorkflowId,
                 });
+
+                console.log("!!!!! ARTIFACTS !!!!!");
+                console.log(artifacts);
+
                 // Find the needed artifact.
                 const matchedArtifactId = artifacts.data.artifacts.find(artifact => artifact.name == 'workspace').id;
                 // Download the artifact.
@@ -68,8 +82,11 @@ jobs:
                 const fs = require('fs');
                 fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
 
+                console.log("!!!!! WORKFLOW PULL REQUESTS !!!!!");
+                console.log();
+
                 // Set pr number to return.
-                prNumber = workflow.pull_requests[0].number;
+                prNumber = workflow.data.pull_requests[0].number;
                 console.log('PR Number: ' + prNumber);
               } else {
                 core.setFailed('Unable to get workflow status to download artifact.');
