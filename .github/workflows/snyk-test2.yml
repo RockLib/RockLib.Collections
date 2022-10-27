@@ -34,7 +34,7 @@ jobs:
               repo: context.repo.repo,
             });
             // Find the needed workflow.
-            const matchWorkflow = workflows.workflow_runs.filter((workflow) => {
+            const matchWorkflow = workflows.data.workflow_runs.filter((workflow) => {
               return workflow.name == "Run Unit Test"
             })[0];
             console.log(workflows.data.workflows);
