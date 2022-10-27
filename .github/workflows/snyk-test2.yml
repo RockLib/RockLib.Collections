@@ -29,15 +29,15 @@ jobs:
         with:
           script: |
             // Get list of workflows from calling repo.
-            const workflows = await github.rest.actions.listRepoWorkflows({
+            const workflows = await github.request('GET /repos/{owner}/{repo}/actions/runs', {
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
             // Find the needed workflow.
-            const matchWorkflow = workflows.data.workflows.filter((workflow) => {
+            const matchWorkflow = workflows.workflow_runs.filter((workflow) => {
               return workflow.name == "Run Unit Test"
             })[0];
-            console.log(workflows);
+            console.log(workflows.data.workflows);
             console.log();
             console.log(matchWorkflow);
 
