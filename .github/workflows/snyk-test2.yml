@@ -48,10 +48,9 @@ jobs:
                 repo: context.repo.repo,
                 run_id: matchWorkflow.id,
               });
-              console.log(workflow.data.status);
               setTimeout(() => {
                 console.log("...");
-              }, 10000)
+              }, 60000)
             } while(workflow.data.status != 'completed')
 
             if(workflow.conclusion == 'success') {
