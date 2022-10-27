@@ -32,6 +32,7 @@ jobs:
 
             async function checkWorkflowStatus(secondsDelayed) {
               var workflow;
+              var prNumber;
               do {
                 workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
                   owner: context.repo.owner,
@@ -43,7 +44,7 @@ jobs:
                 await delay(secondsDelayed * 1000);
               } while(workflow.data.status == 'queued' || workflow.data.status == 'in_progress');
 
-              if(workflow.conclusion == 'success') {
+              if(workflow.data.conclusion == 'success') {
                 // Get list of artifacts from calling workflow.
                 const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                   owner: context.repo.owner,
@@ -63,8 +64,8 @@ jobs:
                 const fs = require('fs');
                 fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
 
-                // Set and return pr number.
-                const prNumber = workflow.pull_requests[0].number;
+                // Set pr number to return.
+                prNumber = workflow.pull_requests[0].number;
                 console.log('PR Number: ' + prNumber);
               } else {
                 core.setFailed('Unable to get workflow status to download artifact.');
@@ -82,7 +83,7 @@ jobs:
             const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
             console.log('Build and test workflow: ' + matchedWorkflowId);
 
-            console.log('Waiting for unit test to complete...');
+            console.log('Waiting for unit test workflow to complete...');
             checkWorkflowStatus(30);
           result-encoding: string
 
