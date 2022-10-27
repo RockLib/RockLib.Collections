@@ -42,13 +42,15 @@ jobs:
             console.log(matchWorkflow);
 
             // Loop until unit testing is complete.
+            console.log("waiting for unit test to complete...");
             do {
+              const workflow = await github.rest.actions.getWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: matchWorkflow.id,
+              });
               setTimeout(() => {
-                const workflow = await github.rest.actions.getWorkflowRun({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  run_id: matchWorkflow.id,
-                });
+                console.log("...");
               }, 10000)
             } while(workflow.status != 'completed')
 
