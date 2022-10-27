@@ -37,46 +37,50 @@ jobs:
             const matchedWorkflowId = workflows.data.workflow_runs.find(workflow => workflow.name == 'Run Unit Test').id;
             console.log('Build and test workflow: ' + matchedWorkflowId);
 
-            // Loop until unit testing is complete.
-            console.log('waiting for unit test to complete...');
-            var workflow;
-            do {
-              workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: matchedWorkflowId,
-              });
-              setTimeout(() => {
-                console.log('...');
-              }, 60000)
-            } while(workflow.data.status != 'completed')
+            const delay = async (ms = 5000) => new Promise(resolve => setTimeout(resolve, ms));
 
-            if(workflow.conclusion == 'success') {
-              // Get list of artifacts from calling workflow.
-              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: matchedWorkflowId,
-              });
-              // Find the needed artifact.
-              const matchedArtifactId = artifacts.data.artifacts.find(artifact => artifact.name == 'workspace').id;
-              // Download the artifact.
-              const download = await github.rest.actions.downloadArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: matchedArtifactId,
-                archive_format: 'zip',
-              });
-              // Save the artifact to the workflow workspace.
-              const fs = require('fs');
-              fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
+            async function checkWorkflowStatus(secondsDelayed) {
+              do {
+                workflow = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: matchedWorkflowId,
+                });
+                console.log('...');
+
+                await delay(secondsDelayed * 1000);
+              } while(workflow.data.status != 'completed');
+
+              if(workflow.conclusion == 'success') {
+                // Get list of artifacts from calling workflow.
+                const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: matchedWorkflowId,
+                });
+                // Find the needed artifact.
+                const matchedArtifactId = artifacts.data.artifacts.find(artifact => artifact.name == 'workspace').id;
+                // Download the artifact.
+                const download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: matchedArtifactId,
+                  archive_format: 'zip',
+                });
+                // Save the artifact to the workflow workspace.
+                const fs = require('fs');
+                fs.writeFileSync('${{github.workspace}}/workspace.zip', Buffer.from(download.data));
+              }
+
+              // Set and return pr number.
+              const prNumber = workflow.pull_requests[0].number;
+              console.log('PR Number: ' + prNumber);
+
+              return prNumber;
             }
 
-            // Set and return pr number.
-            const prNumber = workflow.pull_requests[0].number;
-            console.log('PR Number: ' + prNumber);
-
-            return 'prNumber';
+            console.log('waiting for unit test to complete...');
+            checkWorkflowStatus(30);
           result-encoding: string
 
       # Unzips the downloaded workspace.
