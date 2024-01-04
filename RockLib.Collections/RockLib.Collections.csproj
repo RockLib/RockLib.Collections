@@ -6,7 +6,7 @@
 		<EmbedUntrackedSources>True</EmbedUntrackedSources>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageId>RockLib.Collections</PackageId>
-		<PackageVersion>3.0.0-alpha.1</PackageVersion>
+		<PackageVersion>3.0.0</PackageVersion>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageReleaseNotes>A changelog is available at https://github.com/RockLib/RockLib.Collections/blob/main/RockLib.Collections/CHANGELOG.md.</PackageReleaseNotes>
 		<PackageProjectUrl>https://github.com/RockLib/RockLib.Collections</PackageProjectUrl>
@@ -14,7 +14,7 @@
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageTags>rocklib collections</PackageTags>
 		<PublishRepositoryUrl>True</PublishRepositoryUrl>
-		<Version>3.0.0-alpha.1</Version>
+		<Version>3.0.0</Version>
 	</PropertyGroup>
 	<PropertyGroup>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(PackageId).xml</DocumentationFile>
